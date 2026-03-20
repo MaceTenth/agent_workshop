@@ -1,0 +1,351 @@
+/* frameworks.css — styles for the Frameworks comparison page */
+
+/* ── TOC landing page ─────────────────────────── */
+#fw-toc {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fw-toc {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 32px 24px 40px;
+}
+
+.fw-toc-intro {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-bottom: 28px;
+}
+
+.fw-toc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.fw-toc-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+}
+.fw-toc-card:hover {
+  border-color: var(--accent);
+  background: #1e1b4b33;
+  transform: translateY(-2px);
+}
+
+.fw-toc-icon { font-size: 36px; flex-shrink: 0; }
+
+.fw-toc-body { flex: 1; min-width: 0; }
+
+.fw-toc-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.fw-toc-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.fw-toc-arrow {
+  font-size: 20px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.15s;
+}
+.fw-toc-card:hover .fw-toc-arrow {
+  color: var(--accent-light);
+  transform: translateX(4px);
+}
+
+/* ── Back-to-TOC button ───────────────────────── */
+.fw-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.fw-back-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* ── Problem grid ─────────────────────────────── */
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.problem-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.problem-icon  { font-size: 22px; }
+.problem-title { font-size: 14px; font-weight: 700; }
+.problem-body  { font-size: 12px; color: var(--text-muted); line-height: 1.65; flex: 1; }
+
+.problem-vs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.pain-tag, .solve-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.pain-tag  { background: #2d1010; color: #f87171; }
+.solve-tag { background: var(--green-bg); color: var(--green); }
+
+/* ── Example selector tabs ────────────────────── */
+.example-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ex-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ex-btn:hover { color: var(--text); border-color: var(--accent); }
+.ex-btn.active {
+  background: #1e1b4b;
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+/* ── Side-by-side code compare ────────────────── */
+.code-compare {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.code-compare.active { display: grid; }
+
+.code-col {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.code-header {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.code-header.pain  { background: #2d1010; color: #f87171; }
+.code-header.solve { background: var(--green-bg); color: var(--green); }
+
+.code-block {
+  margin: 0;
+  padding: 16px;
+  background: #0b0d17;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-x: auto;
+  flex: 1;
+  white-space: pre;
+  color: var(--text);
+}
+
+/* Syntax tokens */
+.code-block .kw   { color: #c792ea; }  /* keywords */
+.code-block .fn   { color: #82aaff; }  /* function names */
+.code-block .str  { color: #c3e88d; }  /* strings */
+.code-block .interp { color: #f78c6c; } /* f-string interpolations */
+.code-block .cm   { color: #546e7a; font-style: italic; } /* comments */
+.code-block .ty   { color: #ffcb6b; }  /* types/classes */
+.code-block .num  { color: #f78c6c; }  /* numbers */
+.code-block .dec  { color: #89ddff; }  /* decorators */
+
+/* ── CrewAI concept diagram ───────────────────── */
+.crew-concept {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.crew-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.crew-box.agent-box { border-top: 3px solid var(--purple); }
+.crew-box.task-box  { border-top: 3px solid var(--teal); }
+.crew-box.crew-box-run { border-top: 3px solid var(--gold); }
+
+.crew-box-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
+}
+
+.crew-line {
+  font-size: 11px;
+  line-height: 1.8;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: var(--text-muted);
+}
+
+.crew-key {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.crew-arrow {
+  font-size: 20px;
+  color: var(--text-muted);
+  align-self: center;
+  padding-top: 30px;
+}
+
+/* ── Tradeoffs grid ───────────────────────────── */
+.tradeoff-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.tradeoff-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tradeoff-header {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.tradeoff-header.raw  { background: var(--orange-bg); color: var(--orange); }
+.tradeoff-header.lc   { background: #1a2e1a; color: #86efac; }
+.tradeoff-header.crew { background: var(--purple-bg); color: var(--purple); }
+
+.tradeoff-section {
+  padding: 12px 16px;
+  flex: 1;
+}
+.tradeoff-section.cons { border-top: 1px solid var(--border); }
+
+.tradeoff-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.tradeoff-label.pros { color: var(--green); }
+.tradeoff-label.cons { color: #f87171; }
+
+.tradeoff-section ul {
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tradeoff-section li {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Decision table ───────────────────────────── */
+.decision-guide {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.decision-title {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+
+.decision-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.decision-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.decision-table td {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.decision-table tr:last-child td { border-bottom: none; }
+.decision-table tr:hover td { background: var(--surface2); }
+
+.dt-raw  { background: var(--orange-bg); color: var(--orange);  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.dt-lc   { background: #1a2e1a;          color: #86efac;         font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.dt-crew { background: var(--purple-bg); color: var(--purple);  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }

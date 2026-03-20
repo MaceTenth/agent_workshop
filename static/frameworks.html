@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Workshop — Frameworks</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/planning.css" />
+  <link rel="stylesheet" href="/frameworks.css" />
+</head>
+<body>
+
+  <header>
+    <a href="/" class="back-link">← Workshop</a>
+    <div class="header-icon" style="background:#7c3aed">🔗</div>
+    <div class="header-titles">
+      <h1>Frameworks: LangChain &amp; CrewAI</h1>
+      <p>Why abstractions matter — and what they solve</p>
+    </div>
+  </header>
+
+  <div id="fw-toc" class="fw-toc">
+    <div class="fw-toc-intro">Select a topic to explore it in full.</div>
+    <div class="fw-toc-grid">
+
+      <button class="fw-toc-card" data-screen="problems">
+        <div class="fw-toc-icon">😤</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">The Problems</div>
+          <div class="fw-toc-desc">What gets painful at scale? Six common pain points when building LLM apps in raw Python.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="langchain">
+        <div class="fw-toc-icon">🦜</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">LangChain</div>
+          <div class="fw-toc-desc">Composable building blocks — prompt templates, LCEL chains, tools, and structured output.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="crewai">
+        <div class="fw-toc-icon">🤝</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">CrewAI</div>
+          <div class="fw-toc-desc">Role-based multi-agent teams — Agents, Tasks, and Crews with automatic context handoff.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="tradeoffs">
+        <div class="fw-toc-icon">⚖️</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">Tradeoffs</div>
+          <div class="fw-toc-desc">When to use what — honest pros/cons comparison and a quick decision guide.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+    </div>
+  </div>
+
+  <main id="fw-main" class="planning-main">
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 1: The Problems                             -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-problems">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">What gets painful at scale?</div>
+        <div class="lesson-desc">
+          Writing your first LLM call in Python is 5 lines. But the moment you build something
+          real — with memory, tools, retries, multiple agents, and structured output — the
+          boilerplate explodes. Frameworks like <strong>LangChain</strong> and <strong>CrewAI</strong>
+          exist to absorb that complexity so you can focus on the logic that matters.
+        </div>
+      </div>
+
+      <div class="problem-grid">
+
+        <div class="problem-card">
+          <div class="problem-icon">📝</div>
+          <div class="problem-title">Prompt Management</div>
+          <div class="problem-body">
+            You end up with f-strings scattered everywhere. Changing
+            a system prompt means hunting through ten files. No versioning, no reuse,
+            no easy injection of variables.
+          </div>
+          <div class="problem-vs">
+            <span class="pain-tag">Raw Python: f-strings, manual concatenation</span>
+            <span class="solve-tag">Framework: PromptTemplate, hub.pull()</span>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-icon">🔗</div>
+          <div class="problem-title">Chaining Calls</div>
+          <div class="problem-body">
+            Multi-step pipelines (summarise → translate → format) require manually
+            threading output from one call into the next. Error handling compounds
+            with every new step.
+          </div>
+          <div class="problem-vs">
+            <span class="pain-tag">Raw Python: nested variables, manual wiring</span>
+            <span class="solve-tag">Framework: chain = prompt | llm | parser</span>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-icon">🧠</div>
+          <div class="problem-title">Memory Across Sessions</div>
+          <div class="problem-body">
+            Keeping conversation history is easy for one turn, but persisting it to
+            a database, summarising old turns to stay within context limits, and
+            injecting it correctly takes real engineering work.
+          </div>
+          <div class="problem-vs">
+            <span class="pain-tag">Raw Python: lists + custom DB logic</span>
+            <span class="solve-tag">Framework: ConversationBufferMemory, Redis integration</span>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-icon">🔧</div>
+          <div class="problem-title">Tool / Function Calling</div>
+          <div class="problem-body">
+            Defining tools, writing JSON schemas, running the agentic loop, catching
+            errors, and feeding results back is 80+ lines of boilerplate — written
+            fresh for every new project.
+          </div>
+          <div class="problem-vs">
+            <span class="pain-tag">Raw Python: manual schema + while-loop</span>
+            <span class="solve-tag">Framework: @tool decorator + AgentExecutor</span>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-icon">🏗️</div>
+          <div class="problem-title">Structured Output</div>
+          <div class="problem-body">
+            Getting the model to always return valid JSON with the exact fields you
+            need requires prompt tricks, manual parsing, and retry logic when the
+            model hallucinates extra keys.
+          </div>
+          <div class="problem-vs">
+            <span class="pain-tag">Raw Python: json.loads() + try/except</span>
+            <span class="solve-tag">Framework: .with_structured_output(MyModel)</span>
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="problem-icon">🤝</div>
+          <div class="problem-title">Multi-Agent Coordination</div>
+          <div class="problem-body">
+            When you need a Researcher agent to hand off to a Writer agent to hand off
+            to a Reviewer agent, you're suddenly building an orchestration system.
+            Task queues, context passing, and role enforcement from scratch.
+          </div>
+          <div class="problem-vs">
+            <span class="pain-tag">Raw Python: 200+ lines of orchestration code</span>
+            <span class="solve-tag">Framework: Crew([researcher, writer, reviewer])</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 2: LangChain                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-langchain">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">LangChain — composable building blocks</div>
+        <div class="lesson-desc">
+          LangChain wraps LLM providers into a <strong>unified interface</strong> and lets you compose
+          them with <em>LCEL (LangChain Expression Language)</em> — a pipe-based syntax where every
+          component is chainable. Click each comparison to see what changes.
+        </div>
+      </div>
+
+      <div class="example-selector">
+        <button class="ex-btn active" data-ex="lc-prompt">Prompt Templates</button>
+        <button class="ex-btn" data-ex="lc-chain">Chaining</button>
+        <button class="ex-btn" data-ex="lc-tools">Tools &amp; Agents</button>
+        <button class="ex-btn" data-ex="lc-structured">Structured Output</button>
+      </div>
+
+      <!-- Prompt Templates -->
+      <div class="code-compare active" id="ex-lc-prompt">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="kw">def</span> <span class="fn">ask_llm</span>(topic, level):
+    system = <span class="str">f"You are an expert in </span><span class="interp">{topic}</span><span class="str">."</span>
+    user   = <span class="str">f"Explain </span><span class="interp">{topic}</span><span class="str"> assuming a </span><span class="interp">{level}</span><span class="str"> audience."</span>
+
+    <span class="cm"># Duplicated every time. No reuse. Easy to break.</span>
+    response = client.chat.completions.create(
+        model=<span class="str">"gpt-4o-mini"</span>,
+        messages=[
+            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: system},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: user},
+        ]
+    )
+    <span class="kw">return</span> response.choices[<span class="num">0</span>].message.content
+
+<span class="cm"># Every call site must know the template structure</span>
+result = ask_llm(<span class="str">"machine learning"</span>, <span class="str">"beginner"</span>)</pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangChain</div>
+          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+<span class="cm"># Defined once, reused everywhere, versioned in Hub</span>
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are an expert in {topic}."</span>),
+    (<span class="str">"human"</span>,  <span class="str">"Explain {topic} assuming a {level} audience."</span>),
+])
+
+llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+chain = prompt | llm   <span class="cm"># LCEL pipe operator</span>
+
+<span class="cm"># Clean call site — just pass the variables</span>
+result = chain.invoke({<span class="str">"topic"</span>: <span class="str">"machine learning"</span>, <span class="str">"level"</span>: <span class="str">"beginner"</span>})</pre>
+        </div>
+      </div>
+
+      <!-- Chaining -->
+      <div class="code-compare" id="ex-lc-chain">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># Summarise, then translate, then format as bullet points</span>
+<span class="cm"># Each step must manually thread state to the next</span>
+
+<span class="kw">def</span> <span class="fn">summarise</span>(text):
+    r = client.chat.completions.create(
+        model=<span class="str">"gpt-4o-mini"</span>,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">f"Summarise: </span><span class="interp">{text}</span><span class="str">"</span>}]
+    )
+    <span class="kw">return</span> r.choices[<span class="num">0</span>].message.content
+
+<span class="kw">def</span> <span class="fn">translate_to_french</span>(text):
+    r = client.chat.completions.create(
+        model=<span class="str">"gpt-4o-mini"</span>,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">f"Translate to French: </span><span class="interp">{text}</span><span class="str">"</span>}]
+    )
+    <span class="kw">return</span> r.choices[<span class="num">0</span>].message.content
+
+<span class="cm"># Manually chained — fragile, verbose, hard to swap steps</span>
+summary   = summarise(long_article)
+french    = translate_to_french(summary)</pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangChain (LCEL)</div>
+          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+llm    = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+parser = StrOutputParser()
+
+summarise_chain = (
+    ChatPromptTemplate.from_template(<span class="str">"Summarise: {text}"</span>)
+    | llm | parser
+)
+translate_chain = (
+    ChatPromptTemplate.from_template(<span class="str">"Translate to French: {text}"</span>)
+    | llm | parser
+)
+
+<span class="cm"># Composable pipeline — swap, extend, or branch any step</span>
+pipeline = summarise_chain | (
+    <span class="kw">lambda</span> s: {<span class="str">"text"</span>: s}
+) | translate_chain
+
+result = pipeline.invoke({<span class="str">"text"</span>: long_article})</pre>
+        </div>
+      </div>
+
+      <!-- Tools & Agents -->
+      <div class="code-compare" id="ex-lc-tools">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python (our agentic loop)</div>
+          <pre class="code-block"><span class="cm"># tools.py — manual schema definition</span>
+TOOLS = [{
+    <span class="str">"type"</span>: <span class="str">"function"</span>,
+    <span class="str">"function"</span>: {
+        <span class="str">"name"</span>: <span class="str">"get_datetime"</span>,
+        <span class="str">"description"</span>: <span class="str">"Returns current date and time"</span>,
+        <span class="str">"parameters"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {}}
+    }
+}]
+
+<span class="cm"># llm.py — manual while-loop with tool dispatch</span>
+<span class="kw">while</span> <span class="kw">True</span>:
+    response = client.chat.completions.create(
+        model=MODEL, messages=msgs,
+        tools=TOOLS, tool_choice=<span class="str">"auto"</span>
+    )
+    <span class="kw">if not</span> response.choices[<span class="num">0</span>].message.tool_calls:
+        <span class="kw">break</span>
+    <span class="kw">for</span> tc <span class="kw">in</span> response.choices[<span class="num">0</span>].message.tool_calls:
+        result = execute_tool(tc.function.name, ...)
+        msgs.append({<span class="str">"role"</span>: <span class="str">"tool"</span>, <span class="str">"content"</span>: result, ...})</pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangChain</div>
+          <pre class="code-block"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain.agents <span class="kw">import</span> AgentExecutor, create_tool_calling_agent
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+<span class="cm"># Schema auto-generated from docstring + type hints</span>
+<span class="dec">@tool</span>
+<span class="kw">def</span> <span class="fn">get_datetime</span>() -> <span class="ty">str</span>:
+    <span class="str">"Returns current date and time."</span>
+    <span class="kw">from</span> datetime <span class="kw">import</span> datetime
+    <span class="kw">return</span> datetime.now().isoformat()
+
+llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+agent = create_tool_calling_agent(llm, [get_datetime], prompt)
+
+<span class="cm"># Loop, tool dispatch, error handling — all handled</span>
+executor = AgentExecutor(agent=agent, tools=[get_datetime])
+result   = executor.invoke({<span class="str">"input"</span>: <span class="str">"What time is it?"</span>})</pre>
+        </div>
+      </div>
+
+      <!-- Structured Output -->
+      <div class="code-compare" id="ex-lc-structured">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="kw">import</span> json
+
+<span class="kw">def</span> <span class="fn">extract_person</span>(text):
+    prompt = (<span class="str">f"Extract the person's name and age from: </span><span class="interp">{text}</span><span class="str">\n"</span>
+              <span class="str">"Return only valid JSON: {\"name\": ..., \"age\": ...}"</span>)
+    response = client.chat.completions.create(
+        model=<span class="str">"gpt-4o-mini"</span>,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}]
+    )
+    raw = response.choices[<span class="num">0</span>].message.content
+
+    <span class="cm"># Model sometimes wraps in markdown fences — strip manually</span>
+    raw = raw.strip(<span class="str">"`"</span>).lstrip(<span class="str">"json"</span>).strip()
+    <span class="kw">try</span>:
+        <span class="kw">return</span> json.loads(raw)   <span class="cm"># Still might fail or have wrong keys</span>
+    <span class="kw">except</span> json.JSONDecodeError:
+        <span class="kw">return None</span>  <span class="cm"># Now what?</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangChain + Pydantic</div>
+          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="cm"># Define your schema — same Pydantic you already use</span>
+<span class="kw">class</span> <span class="ty">Person</span>(BaseModel):
+    name: <span class="ty">str</span>
+    age:  <span class="ty">int</span>
+
+llm      = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+extractor = llm.with_structured_output(Person)
+
+<span class="cm"># Always returns a Person object — never raw JSON strings,</span>
+<span class="cm"># never parsing errors, always validated fields.</span>
+person = extractor.invoke(
+    <span class="str">"Alice is 34 years old and works in Engineering."</span>
+)
+<span class="cm"># → Person(name='Alice', age=34)</span></pre>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 3: CrewAI                                  -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-crewai">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">CrewAI — role-based multi-agent teams</div>
+        <div class="lesson-desc">
+          CrewAI models the way <em>human teams</em> work: each <strong>Agent</strong> has a role, a goal,
+          and a backstory. <strong>Tasks</strong> are assigned to specific agents, and a <strong>Crew</strong>
+          orchestrates execution — sequentially or in parallel — without you writing any coordination code.
+        </div>
+      </div>
+
+      <div class="crew-concept">
+        <div class="crew-box agent-box">
+          <div class="crew-box-title">🤖 Agent</div>
+          <div class="crew-box-lines">
+            <div class="crew-line"><span class="crew-key">role:</span> "Senior Researcher"</div>
+            <div class="crew-line"><span class="crew-key">goal:</span> "Find accurate info about {topic}"</div>
+            <div class="crew-line"><span class="crew-key">backstory:</span> "Expert at web research..."</div>
+            <div class="crew-line"><span class="crew-key">tools:</span> [SerperTool(), WebsiteTool()]</div>
+          </div>
+        </div>
+        <div class="crew-arrow">+</div>
+        <div class="crew-box task-box">
+          <div class="crew-box-title">📋 Task</div>
+          <div class="crew-box-lines">
+            <div class="crew-line"><span class="crew-key">description:</span> "Research {topic} and summarise findings"</div>
+            <div class="crew-line"><span class="crew-key">agent:</span> researcher</div>
+            <div class="crew-line"><span class="crew-key">expected_output:</span> "3-paragraph summary"</div>
+          </div>
+        </div>
+        <div class="crew-arrow">→</div>
+        <div class="crew-box crew-box-run">
+          <div class="crew-box-title">🚀 Crew</div>
+          <div class="crew-box-lines">
+            <div class="crew-line"><span class="crew-key">agents:</span> [researcher, writer, reviewer]</div>
+            <div class="crew-line"><span class="crew-key">tasks:</span>  [research_task, write_task, review_task]</div>
+            <div class="crew-line"><span class="crew-key">process:</span> Process.sequential</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="crew-basic">Basic Crew</button>
+        <button class="ex-btn" data-ex="crew-handoff">Context Handoff</button>
+      </div>
+
+      <!-- Basic Crew -->
+      <div class="code-compare active" id="ex-crew-basic">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># 3 agents, each with their own loop, manually passing context</span>
+<span class="kw">def</span> <span class="fn">run_researcher</span>(topic):
+    <span class="kw">return</span> simple_llm_call(
+        <span class="str">f"You are a researcher. Research: </span><span class="interp">{topic}</span><span class="str">"</span>)
+
+<span class="kw">def</span> <span class="fn">run_writer</span>(research_result):
+    <span class="kw">return</span> simple_llm_call(
+        <span class="str">f"You are a writer. Write an article based on:\n</span><span class="interp">{research_result}</span><span class="str">"</span>)
+
+<span class="kw">def</span> <span class="fn">run_reviewer</span>(article):
+    <span class="kw">return</span> simple_llm_call(
+        <span class="str">f"You are a reviewer. Review and improve:\n</span><span class="interp">{article}</span><span class="str">"</span>)
+
+<span class="cm"># Manual orchestration — context passing, no role enforcement</span>
+research = run_researcher(<span class="str">"quantum computing"</span>)
+article  = run_writer(research)
+final    = run_reviewer(article)
+<span class="cm"># No visibility, no retries, no tool access, no delegation</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With CrewAI</div>
+          <pre class="code-block"><span class="kw">from</span> crewai <span class="kw">import</span> Agent, Task, Crew, Process
+<span class="kw">from</span> crewai_tools <span class="kw">import</span> SerperDevTool
+
+researcher = Agent(
+    role=<span class="str">"Senior Researcher"</span>,
+    goal=<span class="str">"Find accurate facts about {topic}"</span>,
+    backstory=<span class="str">"Expert at sifting through web sources"</span>,
+    tools=[SerperDevTool()],  <span class="cm"># real web search built in</span>
+)
+writer = Agent(role=<span class="str">"Tech Writer"</span>, goal=<span class="str">"Craft clear articles"</span>, ...)
+reviewer = Agent(role=<span class="str">"Editor"</span>, goal=<span class="str">"Ensure accuracy and clarity"</span>, ...)
+
+research_task = Task(
+    description=<span class="str">"Research {topic} and compile key findings"</span>,
+    expected_output=<span class="str">"Bullet-point summary of 5 key facts"</span>,
+    agent=researcher,
+)
+<span class="cm"># Tasks automatically pass output to the next task</span>
+crew = Crew(
+    agents=[researcher, writer, reviewer],
+    tasks=[research_task, write_task, review_task],
+    process=Process.sequential,
+    verbose=<span class="kw">True</span>,  <span class="cm"># logs every step</span>
+)
+result = crew.kickoff(inputs={<span class="str">"topic"</span>: <span class="str">"quantum computing"</span>})</pre>
+        </div>
+      </div>
+
+      <!-- Context Handoff -->
+      <div class="code-compare" id="ex-crew-handoff">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># To pass context, you must manually build the message</span>
+<span class="cm"># and decide what each downstream agent actually needs</span>
+
+prev_output = run_researcher(<span class="str">"AI safety"</span>)
+
+<span class="cm"># Truncate if too long? Summarise first? Include all of it?</span>
+<span class="cm"># You decide. Manually. Every. Time.</span>
+writer_prompt = (
+    <span class="str">"Previous research output:\n"</span>
+    + prev_output[:2000]   <span class="cm"># arbitrary truncation</span>
+    + <span class="str">"\n\nNow write an article on AI safety."</span>
+)
+article = simple_llm_call(writer_prompt)
+
+<span class="cm"># The reviewer doesn't know about the original topic</span>
+<span class="cm"># unless you also thread that through every call</span>
+review = simple_llm_call(<span class="str">f"Review:\n{article}"</span>)</pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With CrewAI</div>
+          <pre class="code-block"><span class="cm"># context= links tasks — CrewAI handles injection automatically</span>
+write_task = Task(
+    description=<span class="str">"Write a 500-word article on {topic}"</span>,
+    expected_output=<span class="str">"A polished article with intro, body, conclusion"</span>,
+    agent=writer,
+    context=[research_task],  <span class="cm"># ← output of research flows in here</span>
+)
+
+review_task = Task(
+    description=<span class="str">"Review the article for accuracy and clarity"</span>,
+    expected_output=<span class="str">"Improved article with comments"</span>,
+    agent=reviewer,
+    context=[research_task, write_task],  <span class="cm"># ← sees both</span>
+)
+
+<span class="cm"># Full context chain maintained automatically.</span>
+<span class="cm"># Each agent sees exactly what it needs — nothing more.</span></pre>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 4: Tradeoffs                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-tradeoffs">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">When frameworks help — and when they don't</div>
+        <div class="lesson-desc">
+          Frameworks aren't always the right answer. Here's an honest comparison to help you decide
+          when to reach for a framework versus writing leaner custom code.
+        </div>
+      </div>
+
+      <div class="tradeoff-grid">
+
+        <div class="tradeoff-col">
+          <div class="tradeoff-header raw">⚙️ Raw Python (our workshop approach)</div>
+          <div class="tradeoff-section pros">
+            <div class="tradeoff-label pros">Strengths</div>
+            <ul>
+              <li>Zero abstraction — you see every token and every request</li>
+              <li>No dependency surprises or breaking changes</li>
+              <li>Minimal overhead — faster cold starts</li>
+              <li>Full control over prompts and retry logic</li>
+              <li>Ideal for learning and prototyping single features</li>
+            </ul>
+          </div>
+          <div class="tradeoff-section cons">
+            <div class="tradeoff-label cons">Limitations</div>
+            <ul>
+              <li>Boilerplate multiplies fast as features are added</li>
+              <li>No built-in integrations (vector stores, search, etc.)</li>
+              <li>Memory, retries, streaming all require custom code</li>
+              <li>Multi-agent needs significant orchestration work</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="tradeoff-col">
+          <div class="tradeoff-header lc">🦜 LangChain</div>
+          <div class="tradeoff-section pros">
+            <div class="tradeoff-label pros">Strengths</div>
+            <ul>
+              <li>150+ integrations: vector DBs, search, databases</li>
+              <li>LCEL makes pipelines composable and readable</li>
+              <li>LangSmith tracing for observability out of the box</li>
+              <li>Huge ecosystem: retrieval, structured output, streaming</li>
+              <li>Active community — almost every problem is solved</li>
+            </ul>
+          </div>
+          <div class="tradeoff-section cons">
+            <div class="tradeoff-label cons">Limitations</div>
+            <ul>
+              <li>Can be over-engineered for simple tasks</li>
+              <li>Abstractions sometimes hide important details</li>
+              <li>Breaking changes between major versions historically</li>
+              <li>Not ideal for strict latency requirements</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="tradeoff-col">
+          <div class="tradeoff-header crew">🤝 CrewAI</div>
+          <div class="tradeoff-section pros">
+            <div class="tradeoff-label pros">Strengths</div>
+            <ul>
+              <li>Purpose-built for multi-agent workflows</li>
+              <li>Sequential and hierarchical process modes</li>
+              <li>Role/goal/backstory prompting baked in</li>
+              <li>Built-in tools: search, scraping, file I/O</li>
+              <li>Human-in-the-loop support</li>
+            </ul>
+          </div>
+          <div class="tradeoff-section cons">
+            <div class="tradeoff-label cons">Limitations</div>
+            <ul>
+              <li>More opinionated — harder to customise deeply</li>
+              <li>Younger project — fewer production case studies</li>
+              <li>Overhead per-agent can be expensive in tokens</li>
+              <li>Overkill for single-agent use cases</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="decision-guide">
+        <div class="decision-title">📐 Quick decision guide</div>
+        <table class="decision-table">
+          <thead>
+            <tr>
+              <th>You need…</th>
+              <th>Reach for…</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Quick LLM demo / learning</td>          <td><span class="dt-raw">Raw Python</span></td></tr>
+            <tr><td>Structured output / Pydantic models</td> <td><span class="dt-lc">LangChain</span></td></tr>
+            <tr><td>RAG with vector stores</td>              <td><span class="dt-lc">LangChain</span></td></tr>
+            <tr><td>Composable multi-step pipelines</td>     <td><span class="dt-lc">LangChain LCEL</span></td></tr>
+            <tr><td>150+ source integrations</td>            <td><span class="dt-lc">LangChain</span></td></tr>
+            <tr><td>Team of specialised agents</td>          <td><span class="dt-crew">CrewAI</span></td></tr>
+            <tr><td>Multi-agent with task handoffs</td>      <td><span class="dt-crew">CrewAI</span></td></tr>
+            <tr><td>Research + write + review pipeline</td>  <td><span class="dt-crew">CrewAI</span></td></tr>
+            <tr><td>Max control, min deps</td>               <td><span class="dt-raw">Raw Python</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="/frameworks.js"></script>
+</body>
+</html>
