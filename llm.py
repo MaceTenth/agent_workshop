@@ -94,6 +94,30 @@ def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
             })
 
 
+def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str]:
+    """
+    Simple RAG pipeline (no embeddings):
+      1. Retrieve relevant employee records via keyword matching.
+      2. Format them as plain-text context.
+      3. Inject context + original question into the LLM.
+    Returns (final_answer, usage, formatted_context).
+    """
+    from rag import retrieve, format_docs
+
+    docs = retrieve(user_message)
+    context = format_docs(docs)
+    augmented = (
+        f"{context}\n\n"
+        f"Using the above employee data, answer: {user_message}"
+    )
+    msgs = list(history) + [{"role": "user", "content": augmented}]
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + msgs,
+    )
+    return response.choices[0].message.content, _usage(response), context
+
+
 def llm_with_web_search(user_message: str, history: list[dict]) -> tuple[str, dict, str]:
     """
     Two-step web-search pipeline:

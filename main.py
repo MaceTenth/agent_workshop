@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search
+from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search, llm_with_rag
 
 app = FastAPI(title="Agent Workshop")
 
@@ -11,6 +11,7 @@ class ChatRequest(BaseModel):
     history: list[dict] = []
     tools_enabled: bool = False
     web_search_enabled: bool = False
+    rag_enabled: bool = False
 
 
 @app.post("/chat")
@@ -18,8 +19,11 @@ async def chat(request: ChatRequest):
     base = request.history + [{"role": "user", "content": request.message}]
     tool_invocations: list[dict] = []
     search_context: str = ""
+    rag_context: str = ""
 
-    if request.web_search_enabled:
+    if request.rag_enabled:
+        response, usage, rag_context = llm_with_rag(request.message, request.history)
+    elif request.web_search_enabled:
         response, usage, search_context = llm_with_web_search(request.message, request.history)
     elif request.tools_enabled:
         response, usage, tool_invocations = llm_with_tools(base)
@@ -33,6 +37,7 @@ async def chat(request: ChatRequest):
         "usage": usage,
         "tool_calls": tool_invocations,
         "search_context": search_context,
+        "rag_context": rag_context,
     }
 
 

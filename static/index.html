@@ -26,6 +26,8 @@
       --purple-bg: #1e1535;
       --teal: #2dd4bf;
       --teal-bg: #0f2926;
+      --gold: #fbbf24;
+      --gold-bg: #2f2208;
       --sidebar-w: 240px;
       --radius: 12px;
     }
@@ -76,6 +78,7 @@
     .step-badge.stateful  { background: var(--green-bg);  color: var(--green); }
     .step-badge.tools     { background: var(--purple-bg); color: var(--purple); }
     .step-badge.websearch { background: var(--teal-bg);   color: var(--teal); }
+    .step-badge.rag        { background: var(--gold-bg);   color: var(--gold); }
 
     /* ── Body layout: sidebar + main ─────────────────── */
     .body-layout {
@@ -225,6 +228,12 @@
       color: var(--teal);
     }
 
+    #mode-banner.rag {
+      background: var(--gold-bg);
+      border-color: #5a3d08;
+      color: var(--gold);
+    }
+
     #mode-banner .icon { font-size: 14px; }
 
     /* ── Chat area ────────────────────────────────────── */
@@ -283,6 +292,7 @@
     .ctx-tag.stateful   { background: var(--green-bg);  color: var(--green); }
     .ctx-tag.tools      { background: var(--purple-bg); color: var(--purple); }
     .ctx-tag.websearch  { background: var(--teal-bg);   color: var(--teal); }
+    .ctx-tag.rag        { background: var(--gold-bg);    color: var(--gold); }
 
     .exchange-meta { display: flex; align-items: center; gap: 6px; }
 
@@ -370,7 +380,23 @@
     .bubble.web  { background: #081f1c; }
     .bubble.web  .bubble-role { color: var(--teal); font-size: 9px; letter-spacing: 0.5px; }
 
-    .web-search-info { display: flex; flex-direction: column; gap: 6px; }
+    .bubble.rag  { background: #1a1000; }
+    .bubble.rag  .bubble-role { color: var(--gold); font-size: 9px; letter-spacing: 0.5px; }
+
+    .rag-docs-info { display: flex; flex-direction: column; gap: 6px; }
+    .rag-docs-content {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #100a00;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-left: 2px solid var(--gold);
+      line-height: 1.5;
+      max-height: 200px;
+      overflow-y: auto;
+    }
     .web-search-preview,
     .web-search-full {
       font-size: 12px;
@@ -578,19 +604,19 @@
         <div id="websearch-status" class="cap-status off">OFF</div>
       </div>
 
-      <div class="capability-card" style="opacity:0.35; pointer-events:none; user-select:none;">
+      <div class="capability-card">
         <div class="cap-top">
           <div class="cap-title-row">
             <span class="cap-icon">📚</span>
             <span class="cap-title">RAG</span>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" disabled />
+            <input type="checkbox" id="rag-toggle" />
             <span class="toggle-track"></span>
           </label>
         </div>
-        <div class="cap-desc">Retrieve relevant documents and inject them into context.</div>
-        <div class="cap-status off">Coming soon</div>
+        <div class="cap-desc">Keyword-retrieval over in-memory employee data — no embeddings needed to get the idea.</div>
+        <div id="rag-status" class="cap-status off">OFF</div>
       </div>
     </aside>
 
@@ -630,6 +656,8 @@
     const toolsStatus     = document.getElementById('tools-status');
     const webSearchToggle = document.getElementById('websearch-toggle');
     const webSearchStatus = document.getElementById('websearch-status');
+    const ragToggle       = document.getElementById('rag-toggle');
+    const ragStatus       = document.getElementById('rag-status');
     const banner          = document.getElementById('mode-banner');
     const modeText    = document.getElementById('mode-text');
     const stepBadge   = document.getElementById('step-badge');
@@ -667,10 +695,14 @@
       const mem       = memToggle.checked;
       const tools     = toolsToggle.checked;
       const webSearch = webSearchToggle.checked;
+      const rag       = ragToggle.checked;
 
       // Step badge
-      if (webSearch) {
-        stepBadge.textContent = 'STEP 4 — WEB SEARCH';
+      if (rag) {
+        stepBadge.textContent = rag && mem ? 'STEP 5 — MEMORY + RAG' : 'STEP 5 — RAG';
+        stepBadge.className   = 'step-badge rag';
+      } else if (webSearch) {
+        stepBadge.textContent = webSearch && mem ? 'STEP 4 — MEMORY + WEB SEARCH' : 'STEP 4 — WEB SEARCH';
         stepBadge.className   = 'step-badge websearch';
       } else if (tools && mem) {
         stepBadge.textContent = 'STEP 3 — MEMORY + TOOLS';
@@ -687,7 +719,10 @@
       }
 
       // Banner
-      if (webSearch) {
+      if (rag) {
+        banner.className   = 'rag';
+        modeText.innerHTML = '<strong>RAG on:</strong> Relevant employee records are retrieved by keyword and injected as context before your message.';
+      } else if (webSearch) {
         banner.className   = 'websearch';
         modeText.innerHTML = '<strong>Web Search on:</strong> OpenAI <code>web_search_preview</code> fetches live results, then feeds them into our LLM.';
       } else if (tools && mem) {
@@ -740,6 +775,31 @@
         toolsStatus.textContent = 'OFF';
         toolsStatus.className   = 'cap-status off';
       }
+      // Web Search and RAG are mutually exclusive
+      if (on && ragToggle.checked) {
+        ragToggle.checked = false;
+        ragStatus.textContent = 'OFF';
+        ragStatus.className   = 'cap-status off';
+      }
+      updateUI();
+    });
+
+    // ── RAG toggle ────────────────────────────────────
+    ragToggle.addEventListener('change', () => {
+      const on = ragToggle.checked;
+      ragStatus.textContent = on ? 'ON' : 'OFF';
+      ragStatus.className   = 'cap-status ' + (on ? 'on' : 'off');
+      // RAG is mutually exclusive with Tools and Web Search
+      if (on && toolsToggle.checked) {
+        toolsToggle.checked = false;
+        toolsStatus.textContent = 'OFF';
+        toolsStatus.className   = 'cap-status off';
+      }
+      if (on && webSearchToggle.checked) {
+        webSearchToggle.checked = false;
+        webSearchStatus.textContent = 'OFF';
+        webSearchStatus.className   = 'cap-status off';
+      }
       updateUI();
     });
 
@@ -774,10 +834,14 @@
 
       const toolsOn     = toolsToggle.checked;
       const webSearchOn = webSearchToggle.checked;
-      const tagClass = webSearchOn ? 'websearch'
+      const ragOn       = ragToggle.checked;
+      const tagClass = ragOn ? 'rag'
+        : webSearchOn ? 'websearch'
         : toolsOn ? 'tools'
         : memoryOn ? 'stateful' : 'stateless';
-      const tagLabel = webSearchOn
+      const tagLabel = ragOn
+        ? (memoryOn ? `RAG + ${historySnap.length} msgs` : 'RAG')
+        : webSearchOn
         ? 'Web Search'
         : toolsOn
           ? (memoryOn ? `Tools + ${historySnap.length} msgs` : 'Tools')
@@ -810,7 +874,7 @@
         const res = await fetch('/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn }),
+          body: JSON.stringify({ message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn }),
         });
 
         if (!res.ok) throw new Error(`Server error ${res.status}`);
@@ -853,6 +917,21 @@
               </div>
             </span>`;
           card.insertBefore(webEl, aiEl);
+        }
+
+        // Inject RAG context bubble
+        if (data.rag_context && ragOn) {
+          const aiEl  = document.getElementById(`ai-bubble-${currentCall}`);
+          const ragEl = document.createElement('div');
+          ragEl.className = 'bubble rag';
+          ragEl.innerHTML = `
+            <span class="bubble-role">RAG</span>
+            <span class="bubble-content">
+              <div class="rag-docs-info">
+                <div class="rag-docs-content">${escapeHtml(data.rag_context)}</div>
+              </div>
+            </span>`;
+          card.insertBefore(ragEl, aiEl);
         }
 
         document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).textContent = data.response;
