@@ -14,6 +14,34 @@ class ChatRequest(BaseModel):
     rag_enabled: bool = False
 
 
+class PlanRequest(BaseModel):
+    task: str
+    mode: str  # zero_shot | few_shot | cot | decompose | react
+
+
+@app.post("/plan")
+async def plan(request: PlanRequest):
+    from planning_llm import zero_shot, few_shot, chain_of_thought, decompose_task, react_loop
+
+    if request.mode == "zero_shot":
+        content, usage = zero_shot(request.task)
+        return {"content": content, "usage": usage}
+    elif request.mode == "few_shot":
+        content, usage = few_shot(request.task)
+        return {"content": content, "usage": usage}
+    elif request.mode == "cot":
+        content, usage = chain_of_thought(request.task)
+        return {"content": content, "usage": usage}
+    elif request.mode == "decompose":
+        content, usage, steps = decompose_task(request.task)
+        return {"content": content, "usage": usage, "steps": steps}
+    elif request.mode == "react":
+        steps, usage = react_loop(request.task)
+        return {"steps": steps, "usage": usage}
+    else:
+        return {"error": f"Unknown mode: {request.mode}"}
+
+
 @app.post("/chat")
 async def chat(request: ChatRequest):
     base = request.history + [{"role": "user", "content": request.message}]

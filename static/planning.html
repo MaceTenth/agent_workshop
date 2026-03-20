@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Workshop — Planning & Prompt Engineering</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/planning.css" />
+</head>
+<body>
+
+  <header>
+    <a href="/" class="back-link">← Workshop</a>
+    <div class="header-icon" style="background:#4f46e5">🧠</div>
+    <div class="header-titles">
+      <h1>Planning &amp; Prompt Engineering</h1>
+      <p>How agents think, decompose tasks, and act step by step</p>
+    </div>
+  </header>
+
+  <!-- ── Tab navigation ── -->
+  <nav class="lesson-nav">
+    <button class="lesson-tab active" data-lesson="prompting">🔤 Prompt Engineering</button>
+    <button class="lesson-tab" data-lesson="decompose">🗂️ Task Decomposition</button>
+    <button class="lesson-tab" data-lesson="react">🔄 ReAct Loop</button>
+  </nav>
+
+  <main class="planning-main">
+
+    <!-- ──────────────────────────────────────────────────────── -->
+    <!-- LESSON 1: Prompt Engineering                            -->
+    <!-- ──────────────────────────────────────────────────────── -->
+    <section class="lesson-section active" id="lesson-prompting">
+
+      <div class="lesson-intro">
+        <div class="lesson-title">Prompt Engineering</div>
+        <div class="lesson-desc">
+          The same question produces very different results depending on <em>how you instruct the model</em>.
+          Three key strategies are shown below. Try them side-by-side with any question to see the difference —
+          the classic <strong>"How many r's are in strawberry?"</strong> is a great start because zero-shot
+          models often get it wrong while chain-of-thought gets it right.
+        </div>
+
+        <div class="technique-grid">
+          <div class="technique-card">
+            <div class="tc-badge zero">Zero-shot</div>
+            <div class="tc-title">Just ask</div>
+            <div class="tc-desc">No examples, no reasoning instructions. The model answers from its pre-trained knowledge alone.</div>
+            <div class="tc-prompt">System: "You are a helpful assistant. Answer directly."</div>
+          </div>
+          <div class="technique-card">
+            <div class="tc-badge few">Few-shot</div>
+            <div class="tc-title">Show examples first</div>
+            <div class="tc-desc">Prepend 2 worked examples to the prompt so the model learns the expected format and reasoning style.</div>
+            <div class="tc-prompt">User: [example 1] → [example 2] → Q: your question</div>
+          </div>
+          <div class="technique-card">
+            <div class="tc-badge cot">Chain-of-Thought</div>
+            <div class="tc-title">Think step by step</div>
+            <div class="tc-desc">Tell the model to reason aloud before answering. Often the most reliable for math, counting, and logic.</div>
+            <div class="tc-prompt">System: "Think step by step. Show your reasoning, then give your final answer."</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-area">
+        <div class="demo-input-row">
+          <textarea id="pe-input" class="demo-input" rows="2"
+            placeholder="Enter a question that benefits from careful reasoning…"
+          >How many r's are in the word 'strawberry'?</textarea>
+          <button class="demo-run-btn" id="pe-run-btn">Run All 3 ▶</button>
+        </div>
+
+        <div class="comparison-grid">
+          <div class="comparison-col">
+            <div class="comp-header zero">Zero-shot</div>
+            <div class="comp-body placeholder" id="pe-zero">Run to see result…</div>
+          </div>
+          <div class="comparison-col">
+            <div class="comp-header few">Few-shot</div>
+            <div class="comp-body placeholder" id="pe-few">Run to see result…</div>
+          </div>
+          <div class="comparison-col">
+            <div class="comp-header cot">Chain-of-Thought</div>
+            <div class="comp-body placeholder" id="pe-cot">Run to see result…</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────── -->
+    <!-- LESSON 2: Task Decomposition                            -->
+    <!-- ──────────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-decompose">
+
+      <div class="lesson-intro">
+        <div class="lesson-title">Planning &amp; Task Decomposition</div>
+        <div class="lesson-desc">
+          Complex tasks are hard to solve in one shot. A <strong>planning agent</strong> first breaks the goal
+          into smaller, ordered subtasks — then executes them one by one. This mirrors how humans approach
+          difficult problems and dramatically improves reliability.
+        </div>
+
+        <div class="concept-flow">
+          <div class="flow-step">
+            <div class="flow-icon">📥</div>
+            <div class="flow-label">Complex Task</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-icon">🧠</div>
+            <div class="flow-label">LLM: Generate Plan</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-icon">📋</div>
+            <div class="flow-label">Ordered Subtasks</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-icon">⚡</div>
+            <div class="flow-label">Execute Each Step</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-icon">✅</div>
+            <div class="flow-label">Final Result</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-area">
+        <div class="demo-input-row">
+          <textarea id="dc-input" class="demo-input" rows="2"
+            placeholder="Enter a complex task to decompose into subtasks…"
+          >Plan a 3-day team offsite for a 15-person engineering team with a $5,000 budget</textarea>
+          <button class="demo-run-btn" id="dc-run-btn">Decompose ▶</button>
+        </div>
+        <div class="decompose-result hidden" id="dc-result"></div>
+      </div>
+
+    </section>
+
+    <!-- ──────────────────────────────────────────────────────── -->
+    <!-- LESSON 3: ReAct Loop                                    -->
+    <!-- ──────────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-react">
+
+      <div class="lesson-intro">
+        <div class="lesson-title">ReAct: Reason + Act</div>
+        <div class="lesson-desc">
+          <strong>ReAct</strong> (Yao et al., 2022) is a prompting framework where the agent interleaves
+          <em>thinking</em> and <em>acting</em>. Rather than answering in one pass, the model alternates between
+          reasoning about its situation and deciding on an action — then observing the result — until it
+          reaches a final answer. This loop makes agent reasoning transparent and debuggable.
+        </div>
+
+        <div class="react-legend">
+          <span class="react-pill think">💭 Thought</span>
+          <span class="react-arrow">→</span>
+          <span class="react-pill act">⚡ Action</span>
+          <span class="react-arrow">→</span>
+          <span class="react-pill observe">👁 Observation</span>
+          <span class="react-arrow">→</span>
+          <span class="react-pill think">💭 Thought</span>
+          <span class="react-arrow">→ …</span>
+          <span class="react-pill answer">✅ Final Answer</span>
+        </div>
+      </div>
+
+      <div class="demo-area">
+        <div class="demo-input-row">
+          <textarea id="react-input" class="demo-input" rows="2"
+            placeholder="Give the agent a problem to reason through step by step…"
+          >What is the best strategy for an early-stage startup to find product-market fit?</textarea>
+          <button class="demo-run-btn" id="react-run-btn">Run ReAct Loop ▶</button>
+        </div>
+        <div class="react-trace hidden" id="react-result"></div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="/planning.js"></script>
+</body>
+</html>

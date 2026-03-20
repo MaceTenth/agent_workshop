@@ -1,0 +1,346 @@
+/* planning.css — styles specific to the Planning & Prompt Engineering page */
+
+/* ── Back link in header ──────────────────────── */
+.back-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.back-link:hover { color: var(--text); border-color: var(--accent); }
+
+/* ── Lesson tab nav ───────────────────────────── */
+.lesson-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 22px;
+  flex-shrink: 0;
+}
+
+.lesson-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 18px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.lesson-tab:hover { color: var(--text); }
+.lesson-tab.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+
+/* ── Planning main (scrollable) ───────────────── */
+.planning-main {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.lesson-section {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 28px 32px;
+  flex-direction: column;
+  gap: 24px;
+}
+.lesson-section.active { display: flex; }
+
+/* ── Lesson intro ─────────────────────────────── */
+.lesson-intro { display: flex; flex-direction: column; gap: 10px; max-width: 860px; }
+
+.lesson-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.lesson-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+/* ── Technique cards (prompt engineering) ────── */
+.technique-grid {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.technique-card {
+  flex: 1;
+  min-width: 180px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.tc-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.tc-badge.zero  { background: var(--orange-bg); color: var(--orange); }
+.tc-badge.few   { background: var(--purple-bg); color: var(--purple); }
+.tc-badge.cot   { background: var(--teal-bg);   color: var(--teal); }
+
+.tc-title { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+.tc-desc  { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; }
+.tc-prompt {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  line-height: 1.5;
+}
+
+/* ── Demo area ────────────────────────────────── */
+.demo-area { display: flex; flex-direction: column; gap: 14px; }
+
+.demo-input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.demo-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 11px 14px;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.demo-input:focus { border-color: var(--accent); }
+.demo-input::placeholder { color: var(--text-muted); }
+
+.demo-run-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+.demo-run-btn:hover:not(:disabled) { background: var(--accent-light); }
+.demo-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Comparison grid ──────────────────────────── */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.comparison-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.comp-header {
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.comp-header.zero { background: var(--orange-bg); color: var(--orange); }
+.comp-header.few  { background: var(--purple-bg); color: var(--purple); }
+.comp-header.cot  { background: var(--teal-bg);   color: var(--teal); }
+
+.comp-body {
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 130px;
+  flex: 1;
+}
+.comp-body.placeholder { color: var(--text-muted); font-style: italic; font-size: 12px; }
+
+/* ── Concept flow diagram ─────────────────────── */
+.concept-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.flow-step {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  text-align: center;
+  min-width: 110px;
+}
+.flow-icon  { font-size: 20px; margin-bottom: 4px; }
+.flow-label { font-size: 10px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+.flow-arrow { font-size: 16px; color: var(--text-muted); }
+
+/* ── Decompose result ─────────────────────────── */
+.decompose-result {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.decompose-result.hidden { display: none; }
+
+.decompose-steps {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.decompose-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border-left: 3px solid var(--gold);
+  animation: slideIn 0.22s ease;
+}
+
+.step-num {
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-text {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.decompose-reasoning {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+.decompose-reasoning strong { color: var(--text); }
+
+/* ── ReAct legend pills ───────────────────────── */
+.react-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.react-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.react-pill.think   { background: #2d1f5e; color: var(--accent-light); border: 1px solid var(--accent); }
+.react-pill.act     { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange); }
+.react-pill.observe { background: var(--green-bg);  color: var(--green);  border: 1px solid var(--green); }
+.react-pill.answer  { background: var(--gold-bg);   color: var(--gold);   border: 1px solid var(--gold); }
+.react-arrow { color: var(--text-muted); font-size: 14px; }
+
+/* ── ReAct trace ──────────────────────────────── */
+.react-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.react-trace.hidden { display: none; }
+
+.react-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border-left: 3px solid;
+  animation: slideIn 0.22s ease;
+}
+.react-step.think   { background: #0e0b1e; border-color: var(--accent); }
+.react-step.act     { background: var(--orange-bg); border-color: var(--orange); }
+.react-step.observe { background: var(--green-bg);  border-color: var(--green); }
+.react-step.answer  { background: var(--gold-bg);   border-color: var(--gold); }
+
+.react-step-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+
+.react-step-type {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.react-step.think   .react-step-type { color: var(--accent-light); }
+.react-step.act     .react-step-type { color: var(--orange); }
+.react-step.observe .react-step-type { color: var(--green); }
+.react-step.answer  .react-step-type { color: var(--gold); }
+
+.react-step-content {
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Loading dots (reused pattern) ───────────── */
+.loading-dots { display: flex; gap: 5px; padding: 4px 0; align-items: center; }
+.loading-dots span {
+  width: 7px; height: 7px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
