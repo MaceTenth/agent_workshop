@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Workshop — Agent in Action</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/agent.css" />
+</head>
+<body>
+
+  <header>
+    <a href="/planning.html" class="back-link">← Planning</a>
+    <div class="header-icon" style="background:#0f766e">🤖</div>
+    <div class="header-titles">
+      <h1>Agent in Action</h1>
+      <p>Planning → Execution → Synthesis → Verification — all in one loop</p>
+    </div>
+    <a href="/frameworks.html" class="back-link">🔗 Frameworks →</a>
+  </header>
+
+  <!-- ── Input bar ── -->
+  <div class="agent-input-bar">
+    <div class="agent-input-inner">
+      <span class="agent-input-label">Stock ticker</span>
+      <div class="agent-input-row">
+        <input id="ticker-input" class="ticker-input" type="text"
+               placeholder="e.g. AAPL" maxlength="10" autocomplete="off" />
+        <button id="run-btn" class="run-btn">▶ Analyze</button>
+      </div>
+      <div class="ticker-chips">
+        <span class="chips-label">Try:</span>
+        <button class="chip" data-ticker="AAPL">AAPL</button>
+        <button class="chip" data-ticker="MSFT">MSFT</button>
+        <button class="chip" data-ticker="NVDA">NVDA</button>
+        <button class="chip" data-ticker="TSLA">TSLA</button>
+        <button class="chip" data-ticker="AMZN">AMZN</button>
+        <button class="chip" data-ticker="GOOGL">GOOGL</button>
+      </div>
+    </div>
+
+    <!-- How it works strip -->
+    <div class="how-it-works">
+      <div class="hiw-step">
+        <span class="hiw-icon">📋</span>
+        <span class="hiw-text">Plan</span>
+        <span class="hiw-sub">LLM decomposes the task</span>
+      </div>
+      <div class="hiw-arrow">→</div>
+      <div class="hiw-step">
+        <span class="hiw-icon">⚙️</span>
+        <span class="hiw-text">Execute</span>
+        <span class="hiw-sub">Steps run with/without tools</span>
+      </div>
+      <div class="hiw-arrow">→</div>
+      <div class="hiw-step">
+        <span class="hiw-icon">📊</span>
+        <span class="hiw-text">Synthesize</span>
+        <span class="hiw-sub">Findings merged into analysis</span>
+      </div>
+      <div class="hiw-arrow">→</div>
+      <div class="hiw-step">
+        <span class="hiw-icon">✅</span>
+        <span class="hiw-text">Verify</span>
+        <span class="hiw-sub">Agent self-reviews the result</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trace area ── -->
+  <main class="agent-main">
+
+    <!-- Empty state -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Pick a ticker to see the agent think</div>
+      <div class="empty-desc">The agent will break down the analysis task, run each step live (calling tools where needed), then synthesize and verify the result.</div>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loading-state" class="loading-state hidden">
+      <div class="spinner"></div>
+      <div class="loading-text">Agent is thinking<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+    </div>
+
+    <!-- Trace -->
+    <div id="agent-trace" class="agent-trace hidden">
+
+      <!-- Phase 1: Plan -->
+      <div class="phase phase-plan" id="phase-plan">
+        <div class="phase-header">
+          <span class="phase-icon">📋</span>
+          <span class="phase-title">PLANNING</span>
+          <span class="phase-subtitle">Decomposing the task into sub-steps</span>
+          <span id="plan-count" class="phase-count"></span>
+        </div>
+        <div id="plan-list" class="plan-list"></div>
+      </div>
+
+      <!-- Phase 2: Execute -->
+      <div class="phase phase-execute" id="phase-execute">
+        <div class="phase-header">
+          <span class="phase-icon">⚙️</span>
+          <span class="phase-title">EXECUTING</span>
+          <span class="phase-subtitle">Running each step — with tools where needed</span>
+        </div>
+        <div id="exec-list" class="exec-list"></div>
+      </div>
+
+      <!-- Phase 3: Synthesis -->
+      <div class="phase phase-synthesis" id="phase-synthesis">
+        <div class="phase-header">
+          <span class="phase-icon">📊</span>
+          <span class="phase-title">SYNTHESIS</span>
+          <span class="phase-subtitle">Merging findings into a structured investment summary</span>
+        </div>
+        <div id="synthesis-content" class="synthesis-content"></div>
+      </div>
+
+      <!-- Phase 4: Verify -->
+      <div class="phase phase-verify" id="phase-verify">
+        <div class="phase-header">
+          <span class="phase-icon">✅</span>
+          <span class="phase-title">VERIFICATION</span>
+          <span class="phase-subtitle">Agent self-reviews quality and flags caveats</span>
+        </div>
+        <div id="verify-content" class="verify-content"></div>
+      </div>
+
+      <!-- Usage footer -->
+      <div id="usage-footer" class="usage-footer"></div>
+
+    </div>
+  </main>
+
+  <script src="/agent.js"></script>
+</body>
+</html>

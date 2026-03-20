@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search, llm_with_rag
+from agent_llm import run_stock_agent
 
 app = FastAPI(title="Agent Workshop")
 
@@ -17,6 +18,16 @@ class ChatRequest(BaseModel):
 class PlanRequest(BaseModel):
     task: str
     mode: str  # zero_shot | few_shot | cot | decompose | react
+
+
+class AgentRequest(BaseModel):
+    ticker: str
+
+
+@app.post("/agent")
+async def agent(request: AgentRequest):
+    result = run_stock_agent(request.ticker)
+    return result
 
 
 @app.post("/plan")

@@ -64,6 +64,9 @@ def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     invocations = []
 
+
+
+    # The control loop 
     while True:
         response = client.chat.completions.create(
             model=MODEL,
