@@ -328,3 +328,231 @@ That's it — the agentic loop in `llm.py` will automatically call it when the m
 | Google-quality web results | SerpAPI |
 | Factual / encyclopaedic lookups | Wikipedia |
 | Privacy-focused, free tier | Brave Search |
+| Interact with a live page (login, click, fill forms) | browser-use / Playwright |
+| Scrape JS-heavy SPAs that Firecrawl can't reach | Playwright / Puppeteer |
+| Reuse your real Chrome cookies & session | browser-use `--profile` |
+| Run automation in CI / headless cloud | Playwright / browser-use cloud |
+
+---
+
+## Browser Automation Tools
+
+When a page requires JavaScript rendering, login sessions, or real interaction (clicking, form filling, file upload), plain HTTP scrapers fall short. The tools below give an agent a full browser it can drive programmatically.
+
+---
+
+### 7. browser-use (Python SDK + CLI)
+
+browser-use is purpose-built for AI agents — it exposes a high-level async API that lets an LLM control a Chromium browser, extract structured data, and interact with any page, including behind login walls.
+
+**Docs:** https://docs.browser-use.com/open-source/browser-use-cli
+
+**Install**
+```bash
+# Recommended: install via installer (handles Chromium too)
+curl -fsSL https://browser-use.com/cli/install.sh | bash
+
+# Or manually with pip/uv
+pip install browser-use
+browser-use install   # downloads Chromium
+browser-use doctor    # validate installation
+```
+
+**.env**
+```
+# Only needed for cloud features
+BROWSER_USE_API_KEY=sk-...
+```
+
+**CLI quick reference**
+```bash
+browser-use open https://example.com   # navigate (starts daemon on first run)
+browser-use state                      # list page title + all clickable elements with indices
+browser-use click 5                    # click element #5
+browser-use input 3 "hello@example.com" # click input #3 then type
+browser-use screenshot output.png      # capture screenshot
+browser-use eval "document.title"      # run JS and return result
+browser-use close                      # close browser & daemon
+
+# Browser mode flags
+browser-use --headed open https://...       # visible window
+browser-use --profile "Default" open ...   # use your real Chrome + cookies
+browser-use --connect open ...             # connect to already-running Chrome
+```
+
+**Python SDK (async) — tool implementation**
+```python
+from browser_use import Agent, Browser, BrowserConfig
+from langchain_openai import ChatOpenAI  # browser-use integrates with LangChain
+import asyncio
+
+async def _browser_task(task: str, url: str = None) -> str:
+    """
+    Give the agent a natural-language task and an optional starting URL.
+    Returns the agent's final answer as a string.
+    """
+    browser = Browser(config=BrowserConfig(headless=True))
+    agent = Agent(
+        task=f"{task}" + (f" Start at: {url}" if url else ""),
+        llm=ChatOpenAI(model="gpt-4o-mini"),
+        browser=browser,
+    )
+    result = await agent.run()
+    await browser.close()
+    return str(result)
+
+# Synchronous wrapper for use in tools.py
+def browser_task(task: str, url: str = None) -> str:
+    return asyncio.run(_browser_task(task, url))
+```
+
+**OpenAI tool schema**
+```python
+{
+    "type": "function",
+    "function": {
+        "name": "browser_task",
+        "description": (
+            "Control a real browser to navigate pages, click elements, fill forms, "
+            "and extract data from JavaScript-heavy or login-protected sites. "
+            "Describe the full task in natural language."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "task": {
+                    "type": "string",
+                    "description": "Natural-language instruction for the browser agent, e.g. 'Go to twitter.com and get the top 3 trending topics'"
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Optional starting URL"
+                }
+            },
+            "required": ["task"]
+        }
+    }
+}
+```
+
+**Try it:** *"Go to news.ycombinator.com and return the top 5 story titles"*
+
+---
+
+### 8. Playwright (Python)
+
+Playwright is Microsoft's browser automation library — the gold standard for scraping JS-heavy pages, running tests, and precise interaction scripts. It supports Chromium, Firefox, and WebKit.
+
+**Docs:** https://playwright.dev/python/
+
+**Install**
+```bash
+pip install playwright
+playwright install chromium   # or: playwright install  (all browsers)
+```
+
+**Tool implementation**
+```python
+from playwright.sync_api import sync_playwright
+
+def _playwright_scrape(url: str, selector: str = None) -> str:
+    """
+    Navigate to a URL, wait for JS to render, and return page text.
+    Optionally target a CSS selector to extract a specific section.
+    """
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle", timeout=30_000)
+        if selector:
+            el = page.query_selector(selector)
+            text = el.inner_text() if el else "Selector not found."
+        else:
+            text = page.inner_text("body")
+        browser.close()
+    return text[:4000]  # trim to avoid blowing up context window
+
+def _playwright_screenshot(url: str, path: str = "screenshot.png") -> str:
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle", timeout=30_000)
+        page.screenshot(path=path, full_page=True)
+        browser.close()
+    return f"Screenshot saved to {path}"
+```
+
+**OpenAI tool schema**
+```python
+{
+    "type": "function",
+    "function": {
+        "name": "playwright_scrape",
+        "description": (
+            "Scrape a JavaScript-rendered page and return its text content. "
+            "Use when Firecrawl or plain HTTP fetching fails on SPAs or dynamic sites."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "Page URL to scrape"},
+                "selector": {
+                    "type": "string",
+                    "description": "Optional CSS selector to target a specific element"
+                }
+            },
+            "required": ["url"]
+        }
+    }
+}
+```
+
+**Try it:** *"Get the rendered text from https://react-example.com/dashboard"*
+
+---
+
+### 9. Puppeteer (`pyppeteer` / Node `puppeteer`)
+
+Puppeteer is Google's browser automation library that drives Chrome/Chromium over the Chrome DevTools Protocol (CDP). The Python port is `pyppeteer`; for full feature parity, the Node.js version is canonical.
+
+**Docs:** https://pptr.dev
+
+**Install (Python port)**
+```bash
+pip install pyppeteer
+```
+
+**Tool implementation (Python)**
+```python
+import asyncio
+from pyppeteer import launch
+
+async def _puppeteer_scrape_async(url: str) -> str:
+    browser = await launch(headless=True, args=["--no-sandbox"])
+    page = await browser.newPage()
+    await page.goto(url, {"waitUntil": "networkidle2"})
+    text = await page.evaluate("document.body.innerText")
+    await browser.close()
+    return text[:4000]
+
+# Synchronous wrapper
+def _puppeteer_scrape(url: str) -> str:
+    return asyncio.run(_puppeteer_scrape_async(url))
+```
+
+**Note:** For production use, prefer Playwright (actively maintained, better cross-browser support). Use Puppeteer if you are already on a Node.js stack or need CDP-specific features.
+
+---
+
+## Comparison: Browser Automation Tools
+
+| | browser-use | Playwright | Puppeteer |
+|---|---|---|---|
+| **Language** | Python (async) | Python / JS / TS | JS/TS (Python port) |
+| **LLM-native** | ✅ built-in agent loop | ❌ manual scripting | ❌ manual scripting |
+| **Browsers** | Chromium | Chromium / Firefox / WebKit | Chromium only |
+| **Headless** | ✅ | ✅ | ✅ |
+| **Real Chrome + cookies** | ✅ `--profile` flag | ⚠️ via persistent context | ⚠️ executablePath trick |
+| **Cloud mode** | ✅ managed API | ❌ self-host | ❌ self-host |
+| **Best for** | Agent-driven tasks | Scraping & testing | CDP / Node.js stacks |
+| **Maintenance** | Active (2024–) | Active (Microsoft) | Active (Google) |
