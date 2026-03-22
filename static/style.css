@@ -437,7 +437,50 @@ header {
 }
 .tool-call-result::before { content: '→'; color: var(--text-muted); }
 
-.bubble-content { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; }
+.bubble-content { flex: 1; min-width: 0; word-break: break-word; overflow-wrap: break-word; }
+
+/* Plain-text bubbles (user/tool/web/rag) keep pre-wrap */
+.bubble.user .bubble-content,
+.bubble.tool .bubble-content,
+.bubble.web  .bubble-content,
+.bubble.rag  .bubble-content { white-space: pre-wrap; }
+
+/* Markdown rendered inside AI bubbles */
+.bubble.ai .bubble-content p   { margin: 0 0 0.6em; }
+.bubble.ai .bubble-content p:last-child { margin-bottom: 0; }
+.bubble.ai .bubble-content h1,
+.bubble.ai .bubble-content h2,
+.bubble.ai .bubble-content h3  { margin: 0.8em 0 0.3em; font-weight: 600; }
+.bubble.ai .bubble-content ul,
+.bubble.ai .bubble-content ol  { margin: 0 0 0.6em 1.4em; padding: 0; }
+.bubble.ai .bubble-content li  { margin-bottom: 0.2em; }
+.bubble.ai .bubble-content code {
+  background: var(--surface2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.bubble.ai .bubble-content pre {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.bubble.ai .bubble-content pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.83em;
+}
+.bubble.ai .bubble-content strong { font-weight: 600; }
+.bubble.ai .bubble-content em     { font-style: italic; }
+.bubble.ai .bubble-content blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0.5em 0;
+  padding: 0.2em 0.8em;
+  color: var(--text-muted);
+}
 
 /* ── Thinking dots ────────────────────────────────── */
 .thinking { display: flex; gap: 5px; padding: 3px 0; }
@@ -495,6 +538,7 @@ header {
   line-height: 1.5;
   font-family: inherit;
   transition: border-color 0.15s;
+  min-height: 44px;
   max-height: 120px;
   overflow-y: auto;
 }

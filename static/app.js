@@ -285,7 +285,7 @@ async function sendMessage() {
       card.insertBefore(ragEl, aiEl);
     }
 
-    document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).textContent = data.response;
+    document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).innerHTML = marked.parse(data.response);
 
     // Show token usage on the card header
     if (data.usage) {
