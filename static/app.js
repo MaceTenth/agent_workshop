@@ -219,7 +219,7 @@ async function sendMessage() {
       </span>
     </div>`;
   chatEl.appendChild(card);
-  card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  chatEl.scrollTop = chatEl.scrollHeight;
 
   try {
     const res = await fetch('/chat', {
@@ -305,7 +305,7 @@ async function sendMessage() {
     sendBtn.disabled = false;
     inputEl.disabled = false;
     inputEl.focus();
-    card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    chatEl.scrollTop = chatEl.scrollHeight;
   }
 }
 
