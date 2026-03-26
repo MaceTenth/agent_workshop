@@ -190,13 +190,15 @@ async function sendMessage() {
     : webSearchOn ? 'websearch'
     : toolsOn ? 'tools'
     : memoryOn ? 'stateful' : 'stateless';
+  // historySnap has both user+assistant messages; +1 for the current user message
+  const totalMsgs = historySnap.length + 1;
   const tagLabel = ragOn
-    ? (memoryOn ? `RAG + ${historySnap.length} msgs` : 'RAG')
+    ? (memoryOn ? `RAG + ${totalMsgs} msgs` : 'RAG')
     : webSearchOn
     ? 'Web Search'
     : toolsOn
-      ? (memoryOn ? `Tools + ${historySnap.length} msgs` : 'Tools')
-      : (memoryOn ? `${historySnap.length} msg${historySnap.length !== 1 ? 's' : ''} in context` : 'No history sent');
+      ? (memoryOn ? `Tools + ${totalMsgs} msgs` : 'Tools')
+      : (memoryOn ? `${totalMsgs} msg${totalMsgs !== 1 ? 's' : ''} in context` : 'No history sent');
 
   const card = document.createElement('div');
   card.className = 'exchange';
@@ -222,10 +224,17 @@ async function sendMessage() {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   try {
+    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn };
+    console.group(`%c📤 API Call #${currentCall} — REQUEST`, 'color:#a78bfa;font-weight:bold');
+    console.log('%cUser message:', 'color:#93c5fd', text);
+    console.log('%cHistory sent (%d messages):', 'color:#93c5fd', historySnap.length, historySnap);
+    console.log('%cMode:', 'color:#93c5fd', ragOn ? 'RAG' : webSearchOn ? 'Web Search' : toolsOn ? 'Tools' : memoryOn ? 'Memory' : 'Stateless');
+    console.groupEnd();
+
     const res = await fetch('/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) throw new Error(`Server error ${res.status}`);
@@ -293,6 +302,20 @@ async function sendMessage() {
       if (tok) tok.textContent = `${data.usage.prompt_tokens.toLocaleString()} prompt tok`;
       if (memoryOn || toolsOn || webSearchOn) updateCtxMeter(data.usage.prompt_tokens);
     }
+
+    console.group(`%c📥 API Call #${currentCall} — RESPONSE`, 'color:#34d399;font-weight:bold');
+    console.log('%cModel response:', 'color:#6ee7b7', data.response);
+    if (data.usage) {
+      const pct = ((data.usage.prompt_tokens / CTX_LIMIT) * 100).toFixed(1);
+      console.log('%cToken usage:', 'color:#6ee7b7',
+        `prompt=${data.usage.prompt_tokens.toLocaleString()}`,
+        `| completion=${data.usage.completion_tokens.toLocaleString()}`,
+        `| total=${data.usage.total_tokens.toLocaleString()}`,
+        `| ctx window used=${pct}% of ${CTX_LIMIT.toLocaleString()}`);
+      console.log('%cContext window breakdown:', 'color:#6ee7b7',
+        `history (${historySnap.length} msgs) + current user msg = ${totalMsgs} msgs sent → ${data.usage.prompt_tokens} prompt tokens`);
+    }
+    console.groupEnd();
 
     // Always accumulate history so toggling memory mid-conversation works
     history.push({ role: 'user',      content: text });
