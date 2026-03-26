@@ -26,6 +26,18 @@
     <aside class="sidebar">
       <div class="sidebar-header">Capabilities</div>
 
+      <!-- Context window meter — lives at the top of the sidebar -->
+      <div class="ctx-meter" id="ctx-meter">
+        <div class="ctx-meter-label">
+          <a href="/context-window.html" target="_blank" style="color:var(--text); text-decoration:underline; text-underline-offset: 4px;" title="Open Context Window Demo">Context Window</a>
+          <span id="ctx-pct">0%</span>
+        </div>
+        <div class="ctx-bar-track">
+          <div id="ctx-bar-fill"></div>
+        </div>
+        <div id="ctx-tokens" class="ctx-tokens">0 / 128k tokens</div>
+      </div>
+
       <div class="capability-card">
         <div class="cap-top">
           <div class="cap-title-row">
@@ -39,18 +51,6 @@
         </div>
         <div class="cap-desc">Send the full conversation history with every request so the model can reference earlier turns.</div>
         <div id="memory-status" class="cap-status off">OFF — stateless</div>
-      </div>
-
-      <!-- Context window meter — lives below the Memory card -->
-      <div class="ctx-meter" id="ctx-meter">
-        <div class="ctx-meter-label">
-          <span>Context Window</span>
-          <span id="ctx-pct">0%</span>
-        </div>
-        <div class="ctx-bar-track">
-          <div id="ctx-bar-fill"></div>
-        </div>
-        <div id="ctx-tokens" class="ctx-tokens">0 / 128k tokens</div>
       </div>
 
       <div class="capability-card">

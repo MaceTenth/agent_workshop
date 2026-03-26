@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Understanding the Context Window</title>
+  <meta name="description" content="Interactive visualization of LLM context windows - see how they fill up and learn strategies to manage them.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #0a0a1a;
+      --bg-card: rgba(20, 20, 45, 0.7);
+      --accent-1: #6366f1;
+      --accent-2: #8b5cf6;
+      --accent-3: #a78bfa;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --orange: #fb923c;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ── Animated Background ── */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    .bg-glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-glow-1 {
+      top: -200px;
+      left: -200px;
+      background: var(--accent-1);
+    }
+
+    .bg-glow-2 {
+      bottom: -200px;
+      right: -200px;
+      background: var(--accent-2);
+    }
+
+    /* ── Navigation dots ── */
+    .nav-dots {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .nav-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .nav-dot.active {
+      background: var(--accent-1);
+      border-color: var(--accent-3);
+      box-shadow: 0 0 12px var(--accent-1);
+    }
+
+    .nav-dot .tooltip {
+      position: absolute;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      white-space: nowrap;
+      font-size: 12px;
+      background: var(--bg-card);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--glass-border);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .nav-dot:hover .tooltip {
+      opacity: 1;
+    }
+
+    /* ── Sections ── */
+    section {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+    }
+
+    .container {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    /* ── Section 1 — Hero ── */
+    .hero-title {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent-3), var(--accent-1), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+      line-height: 1.1;
+    }
+
+    .hero-sub {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 550px;
+      margin-bottom: 40px;
+    }
+
+    /* Context Window Visual — the "bucket" */
+    .bucket-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 48px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .bucket {
+      width: 320px;
+      height: 380px;
+      border: 2px solid var(--accent-1);
+      border-top: none;
+      border-radius: 0 0 24px 24px;
+      position: relative;
+      background: rgba(99, 102, 241, 0.04);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .bucket-label {
+      position: absolute;
+      top: -36px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-3);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .bucket-capacity {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      z-index: 5;
+    }
+
+    .bucket-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, rgba(99,102,241,0.3), rgba(99,102,241,0.6));
+      transition: height 0.6s cubic-bezier(.4,0,.2,1), background 0.6s ease;
+      border-radius: 0 0 22px 22px;
+    }
+
+    .bucket-fill.warning {
+      background: linear-gradient(180deg, rgba(251,191,36,0.3), rgba(251,191,36,0.6));
+    }
+
+    .bucket-fill.danger {
+      background: linear-gradient(180deg, rgba(248,113,113,0.3), rgba(248,113,113,0.7));
+    }
+
+    .bucket-fill.overflow {
+      background: linear-gradient(180deg, rgba(248,113,113,0.5), rgba(220,38,38,0.9));
+    }
+
+    .bucket-items {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 3px;
+      z-index: 2;
+    }
+
+    .bucket-item {
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: white;
+      animation: dropIn 0.4s cubic-bezier(.4,0,.2,1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @keyframes dropIn {
+      from { transform: translateY(-30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .item-system { background: rgba(99,102,241,0.5); }
+    .item-user { background: rgba(52,211,153,0.4); }
+    .item-assistant { background: rgba(139,92,246,0.4); }
+    .item-tool { background: rgba(251,191,36,0.35); }
+    .item-overflow { background: rgba(248,113,113,0.5); }
+
+    .bucket-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .bucket-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 340px;
+    }
+
+    .bucket-controls h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .add-btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+    }
+
+    .add-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    .add-btn:active {
+      transform: translateY(0);
+    }
+
+    .add-btn.system { background: rgba(99,102,241,0.6); }
+    .add-btn.user { background: rgba(52,211,153,0.5); }
+    .add-btn.assistant { background: rgba(139,92,246,0.5); }
+    .add-btn.tool { background: rgba(251,191,36,0.45); }
+    .add-btn.reset { background: rgba(248,113,113,0.4); font-size: 12px; }
+
+    .token-counter {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .token-counter span {
+      font-weight: 700;
+      font-size: 1.3rem;
+    }
+
+    .token-counter .green { color: var(--green); }
+    .token-counter .yellow { color: var(--yellow); }
+    .token-counter .red { color: var(--red); }
+
+    /* ── Section 2 — Explosion Demo ── */
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .section-sub {
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      max-width: 600px;
+      font-size: 1rem;
+    }
+
+    .explosion-demo {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .scenario-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      background: var(--glass);
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-1);
+      color: white;
+      border-color: var(--accent-1);
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+    }
+
+    .tab-btn:hover:not(.active) {
+      border-color: var(--accent-3);
+      color: var(--text-primary);
+    }
+
+    .timeline {
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+      height: 340px;
+      padding: 0 8px 0;
+      position: relative;
+      overflow: visible;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .timeline-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      height: 100%;
+    }
+
+    .timeline-bar {
+      width: 100%;
+      max-width: 70px;
+      border-radius: 8px 8px 0 0;
+      transition: height 0.7s cubic-bezier(.4,0,.2,1), background 0.4s;
+      position: relative;
+      min-height: 4px;
+      cursor: pointer;
+    }
+
+    .bar-token-label {
+      position: absolute;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.4s ease 0.3s;
+    }
+
+    .bar-token-label.show {
+      opacity: 1;
+    }
+
+    .bar-token-label.overflow {
+      color: var(--red);
+    }
+
+    .timeline-bar .bar-tooltip {
+      position: absolute;
+      top: -44px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--bg-card);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--glass-border);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+      z-index: 11;
+    }
+
+    .timeline-bar:hover .bar-tooltip {
+      opacity: 1;
+    }
+
+    .timeline-label {
+      font-size: 10px;
+      color: var(--text-secondary);
+      text-align: center;
+      writing-mode: horizontal-tb;
+      line-height: 1.3;
+    }
+
+    .limit-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--red);
+      z-index: 5;
+      opacity: 0.7;
+      pointer-events: none;
+      transition: bottom 0.6s ease;
+    }
+
+    .limit-line::after {
+      content: '128K LIMIT';
+      position: absolute;
+      right: 0;
+      top: -20px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--red);
+      letter-spacing: 1px;
+      background: rgba(248,113,113,0.15);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .explosion-insight {
+      padding: 16px 20px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      line-height: 1.5;
+    }
+
+    .explosion-insight .icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    /* ── Section 3 — Management Strategies ── */
+    .strategies-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .strategy-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      cursor: pointer;
+      transition: all 0.5s cubic-bezier(.4,0,.2,1);
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(40px) scale(0.95);
+    }
+
+    .strategy-card.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .strategy-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(99,102,241,0.05));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .strategy-card:hover {
+      border-color: var(--accent-1);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+
+    .strategy-card:hover::before {
+      opacity: 1;
+    }
+
+    .strategy-card.active {
+      border-color: var(--accent-1);
+      box-shadow: 0 0 24px rgba(99,102,241,0.15);
+    }
+
+
+    .strategy-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .strategy-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .strategy-visual {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      display: none;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .strategy-card.active .strategy-visual {
+      display: block;
+    }
+
+    /* ── Strategy Mental Model Animations ── */
+
+    /* 1. Sliding Window */
+    .sw-demo {
+      position: relative;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    .sw-track {
+      display: flex;
+      gap: 6px;
+      animation: slideTrack 8s linear infinite;
+    }
+
+    .sw-msg {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.8);
+      background: var(--glass);
+      border: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+
+    .sw-window {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 140px; /* fits ~4 blocks */
+      height: 44px;
+      border: 2px dashed var(--accent-3);
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(99,102,241,0.2) inset;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .sw-window::after {
+      content: 'Context Window';
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: var(--accent-3);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    @keyframes slideTrack {
+      0% { transform: translateX(50%); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* Message color states based on position relative to window can be tricky in pure CSS without scroll-driven animations, 
+       but we can use an animation on the messages themselves that syncs with the sliding. */
+    .sw-msg {
+      animation: msgState 8s linear infinite;
+    }
+
+    @keyframes msgState {
+      0%, 40% { background: var(--green); opacity: 1; transform: scale(1); border-color: var(--green); }
+      45%, 100% { background: rgba(255,255,255,0.05); opacity: 0.3; transform: scale(0.9); }
+    }
+    
+    /* Offset animations for each message so they light up when passing through the center */
+    .sw-msg:nth-child(1) { animation-delay: -0.5s; }
+    .sw-msg:nth-child(2) { animation-delay: -1.0s; }
+    .sw-msg:nth-child(3) { animation-delay: -1.5s; }
+    .sw-msg:nth-child(4) { animation-delay: -2.0s; }
+    .sw-msg:nth-child(5) { animation-delay: -2.5s; }
+    .sw-msg:nth-child(6) { animation-delay: -3.0s; }
+    .sw-msg:nth-child(7) { animation-delay: -3.5s; }
+    .sw-msg:nth-child(8) { animation-delay: -4.0s; }
+    .sw-msg:nth-child(9) { animation-delay: -4.5s; }
+    .sw-msg:nth-child(10) { animation-delay: -5.0s; }
+    .sw-msg:nth-child(11) { animation-delay: -5.5s; }
+    .sw-msg:nth-child(12) { animation-delay: -6.0s; }
+    .sw-msg:nth-child(13) { animation-delay: -6.5s; }
+    .sw-msg:nth-child(14) { animation-delay: -7.0s; }
+    .sw-msg:nth-child(15) { animation-delay: -7.5s; }
+
+    /* 2. Summarization */
+    .summ-demo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .summ-box {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 12px;
+      width: 100%;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      animation: summShrink 4s ease-in-out infinite alternate;
+      overflow: hidden;
+    }
+
+    .summ-line-box {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--red);
+      width: 100%;
+      transition: all 0.3s;
+    }
+
+    .summ-line-box:nth-child(2) { width: 90%; }
+    .summ-line-box:nth-child(3) { width: 95%; }
+    .summ-line-box:nth-child(4) { width: 85%; }
+    .summ-line-box:nth-child(5) { width: 92%; }
+    .summ-line-box:nth-child(6) { width: 88%; }
+
+    .summ-line-box.collapsible {
+      animation: summFade 4s ease-in-out infinite alternate;
+    }
+
+    .summ-arrow-down {
+      font-size: 20px;
+      color: var(--green);
+      animation: bouncePulse 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes summShrink {
+      0%, 20% { height: 90px; border-color: rgba(248,113,113,0.3); }
+      80%, 100% { height: 32px; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.05); }
+    }
+
+    @keyframes summFade {
+      0%, 30% { opacity: 1; height: 6px; margin-bottom: 0px; background: var(--red); }
+      70%, 100% { opacity: 0; height: 0px; margin-bottom: -6px; background: var(--green); }
+    }
+
+    @keyframes bouncePulse {
+      0%, 30% { transform: translateY(-5px); opacity: 0.3; color: var(--red); }
+      70%, 100% { transform: translateY(5px); opacity: 1; color: var(--green); }
+    }
+
+    /* 3. RAG Retrieval */
+    .rag-demo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 16px;
+      height: 100px;
+    }
+
+    .rag-db {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .rag-db-chunk {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .rag-db-chunk.target {
+      animation: ragHighlight 4s infinite;
+    }
+
+    .rag-beam {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-1), transparent);
+      position: relative;
+      overflow: visible;
+    }
+
+    .rag-particle {
+      position: absolute;
+      top: -6px;
+      left: 0;
+      width: 14px;
+      height: 14px;
+      background: var(--accent-1);
+      border-radius: 3px;
+      box-shadow: 0 0 10px var(--accent-1);
+      animation: ragFly 4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+    }
+
+    .rag-particle:nth-child(2) { animation-delay: 0.2s; background: var(--accent-2); box-shadow: 0 0 10px var(--accent-2);}
+    .rag-particle:nth-child(3) { animation-delay: 0.4s; background: var(--green); box-shadow: 0 0 10px var(--green);}
+
+    .rag-llm {
+      padding: 12px;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid var(--accent-1);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      min-width: 60px;
+    }
+
+    .rag-llm-slot {
+      width: 20px;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      animation: ragSlotFill 4s infinite;
+    }
+    
+    .rag-llm-slot:nth-child(1) { animation-delay: 0s; }
+    .rag-llm-slot:nth-child(2) { animation-delay: 0.2s; }
+    .rag-llm-slot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes ragHighlight {
+      0%, 20% { background: rgba(255,255,255,0.1); box-shadow: none; transform: scale(1); }
+      30%, 70% { background: var(--accent-1); box-shadow: 0 0 10px var(--accent-1); transform: scale(1.2); }
+      80%, 100% { background: rgba(255,255,255,0.1); box-shadow: none; transform: scale(1); }
+    }
+
+    @keyframes ragFly {
+      0%, 30% { left: 0; opacity: 0; transform: scale(0.5); }
+      40% { opacity: 1; transform: scale(1.2); }
+      60% { left: 100%; opacity: 1; transform: scale(1); }
+      70%, 100% { left: 100%; opacity: 0; transform: scale(0.5); }
+    }
+
+    @keyframes ragSlotFill {
+      0%, 55% { background: rgba(255,255,255,0.1); box-shadow: none;}
+      60%, 90% { background: var(--accent-1); box-shadow: 0 0 8px var(--accent-1);}
+      100% { background: rgba(255,255,255,0.1); box-shadow: none; }
+    }
+
+
+    /* 4. Tool Trimming */
+    .trim-wrap {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-top: 16px;
+      height: 100px;
+    }
+
+    .trim-block {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .trim-line-item {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--green);
+      width: 100%;
+    }
+    .trim-line-item.noise {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .trim-block.animating .trim-line-item.noise {
+      animation: trimNoise 4s infinite alternate ease-in-out;
+    }
+    
+    .trim-block.animating {
+      animation: trimBlockShrink 4s infinite alternate ease-in-out;
+    }
+
+    @keyframes trimNoise {
+      0%, 20% { height: 6px; opacity: 1; margin-bottom: 0; background: rgba(255,255,255,0.1); }
+      30% { background: var(--red); height: 2px; }
+      50%, 100% { height: 0px; opacity: 0; margin-bottom: -5px; }
+    }
+    
+    @keyframes trimBlockShrink {
+      0%, 20% { padding-bottom: 10px; }
+      50%, 100% { padding-bottom: 4px; }
+    }
+
+
+    /* 5. Hierarchical Memory */
+    .memory-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 16px;
+      position: relative;
+    }
+
+    .memory-tier {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0,0,0,0.2);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.05);
+      position: relative;
+      z-index: 2;
+    }
+
+    .memory-bar-bg {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .memory-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    .memory-tier:nth-child(1) .memory-bar-fill { background: var(--accent-1); width: 90%; animation: memPulse1 3s infinite alternate;}
+    .memory-tier:nth-child(3) .memory-bar-fill { background: var(--yellow); width: 60%; animation: memPulse2 3s infinite alternate 1s;}
+    .memory-tier:nth-child(5) .memory-bar-fill { background: var(--green); width: 30%; animation: memPulse3 3s infinite alternate 2s;}
+
+    @keyframes memPulse1 { 0% { width: 80%; } 100% { width: 100%; box-shadow: 0 0 10px var(--accent-1); } }
+    @keyframes memPulse2 { 0% { width: 50%; } 100% { width: 70%; box-shadow: 0 0 10px var(--yellow); } }
+    @keyframes memPulse3 { 0% { width: 25%; } 100% { width: 40%; box-shadow: 0 0 10px var(--green); } }
+
+    .memory-flow {
+      height: 16px;
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+
+    .memory-particle {
+      width: 4px;
+      height: 4px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 50%;
+      box-shadow: 0 0 8px white;
+      position: absolute;
+      top: 0;
+      animation: memDrop 1.5s infinite linear;
+    }
+    .memory-flow:nth-child(4) .memory-particle { animation-delay: 0.7s; background: var(--yellow); }
+
+    @keyframes memDrop {
+      0% { transform: translateY(-5px); opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { transform: translateY(20px); opacity: 0; }
+    }
+
+    /* 6. Bigger Window */
+    .bigger-demo {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      justify-content: center;
+      height: 120px;
+      margin-top: 16px;
+    }
+
+    .bigger-box {
+      border: 2px solid;
+      border-radius: 6px 6px 4px 4px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 3px;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .bigger-box-inner {
+      width: 100%;
+      border-radius: 3px;
+      animation: fillBreathe 4s infinite alternate ease-in-out;
+      transform-origin: bottom;
+    }
+
+    @keyframes fillBreathe {
+      0% { transform: scaleY(0.95); opacity: 0.8; }
+      100% { transform: scaleY(1.05); opacity: 1; }
+    }
+
+
+    /* Footer */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    /* ── Responsiveness ── */
+    @media (max-width: 768px) {
+      .bucket-wrapper {
+        flex-direction: column;
+      }
+      .bucket {
+        width: 100%;
+        max-width: 320px;
+        height: 280px;
+      }
+      .timeline {
+        height: 200px;
+      }
+      .nav-dots {
+        display: none;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
+
+    /* Overflow animation */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+    .bucket.shake {
+      animation: shake 0.3s ease;
+    }
+
+    /* Pulse on limit */
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(248,113,113,0); }
+      50% { box-shadow: 0 0 20px 4px rgba(248,113,113,0.3); }
+    }
+
+    .bucket.pulse {
+      animation: pulse-red 1s ease infinite;
+    }
+
+    .play-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      color: white;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .play-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+    }
+
+    .play-btn-wrapper {
+      display: flex;
+    }
+
+    /* Section 3 title animation */
+    .section-header {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.7s cubic-bezier(.4,0,.2,1);
+    }
+
+    .section-header.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* RAG flow node animation */
+    .rag-node {
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.4s ease;
+    }
+
+    .strategy-card.active .rag-node {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .strategy-card.active .rag-node:nth-child(1) { transition-delay: 0s; }
+    .strategy-card.active .rag-node:nth-child(3) { transition-delay: 0.15s; }
+    .strategy-card.active .rag-node:nth-child(5) { transition-delay: 0.3s; }
+    .strategy-card.active .rag-node:nth-child(7) { transition-delay: 0.45s; }
+
+    .rag-arrow {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .strategy-card.active .rag-arrow {
+      opacity: 1;
+    }
+
+    .strategy-card.active .rag-arrow:nth-child(2) { transition-delay: 0.1s; }
+    .strategy-card.active .rag-arrow:nth-child(4) { transition-delay: 0.25s; }
+    .strategy-card.active .rag-arrow:nth-child(6) { transition-delay: 0.4s; }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Nav Dots -->
+  <nav class="nav-dots" id="navDots">
+    <div class="nav-dot active" data-section="0"><span class="tooltip">What is it?</span></div>
+    <div class="nav-dot" data-section="1"><span class="tooltip">How it explodes</span></div>
+    <div class="nav-dot" data-section="2"><span class="tooltip">How to manage it</span></div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 1 — What is a Context Window        -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section id="sec-what">
+    <div class="container">
+      <h1 class="hero-title">The Context<br>Window</h1>
+      <p class="hero-sub">An LLM's short-term memory. Everything it can "see" in a single conversation — system prompt, user messages, assistant replies, and tool results — all must fit inside.</p>
+
+      <div class="bucket-wrapper">
+        <div style="position:relative;">
+          <div class="bucket" id="ctxBucket">
+            <span class="bucket-label">Context Window</span>
+            <span class="bucket-capacity" id="capacityLabel">128K tokens</span>
+            <div class="bucket-fill" id="bucketFill" style="height: 0%;"></div>
+            <div class="bucket-items" id="bucketItems"></div>
+          </div>
+          <div class="bucket-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(99,102,241,0.5);"></div>System</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(52,211,153,0.4);"></div>User</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(139,92,246,0.4);"></div>Assistant</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.35);"></div>Tool</div>
+          </div>
+        </div>
+
+        <div class="bucket-controls">
+          <h3>Drop messages into the window 👇</h3>
+          <button class="add-btn system" onclick="addItem('system', 'System prompt: You are a helpful assistant...', 2000)" id="addSystem">
+            <span>📋</span> Add System Prompt (~2K)
+          </button>
+          <button class="add-btn user" onclick="addItem('user', 'User: Analyze this 50-page document...', 8000)" id="addUser">
+            <span>💬</span> Add User Message (~8K)
+          </button>
+          <button class="add-btn assistant" onclick="addItem('assistant', 'Assistant: Based on my analysis...', 4000)" id="addAssistant">
+            <span>🤖</span> Add Assistant Reply (~4K)
+          </button>
+          <button class="add-btn tool" onclick="addItem('tool', 'Tool result: {search_results: [...]}', 12000)" id="addTool">
+            <span>🔧</span> Add Tool Result (~12K)
+          </button>
+          <button class="add-btn reset" onclick="resetBucket()" id="resetBucket">
+            <span>🗑️</span> Reset
+          </button>
+          <div class="token-counter">
+            Tokens used: <span id="tokenCount" class="green">0</span> / 128,000
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 2 — How It Explodes                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section id="sec-explode">
+    <div class="container">
+      <h2 class="section-title" style="background: linear-gradient(135deg, var(--yellow), var(--red)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip:text;">
+        How It Explodes 💥
+      </h2>
+      <p class="section-sub">A single agentic conversation can burn through 128K tokens in minutes. Pick a scenario to watch it happen.</p>
+
+      <div class="explosion-demo">
+        <div class="scenario-tabs" id="scenarioTabs">
+          <button class="tab-btn active" data-scenario="agent">🤖 Agentic Loop</button>
+          <button class="tab-btn" data-scenario="rag">📄 Long Documents</button>
+          <button class="tab-btn" data-scenario="multi">🔗 Multi-turn Chat</button>
+        </div>
+
+        <div style="position:relative;" id="timelineContainer">
+          <div class="timeline" id="timeline">
+            <div class="limit-line" id="limitLine"></div>
+          </div>
+        </div>
+
+        <div class="play-btn-wrapper">
+          <button class="play-btn" onclick="playScenario()" id="playBtn">▶ Play Scenario</button>
+        </div>
+
+        <div class="explosion-insight" id="scenarioInsight">
+          <span class="icon">🤖</span>
+          <span>In an <strong>agentic loop</strong>, each step adds tool calls + results + reasoning. After just 6 iterations, 128K tokens are consumed.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 3 — Management Strategies            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section id="sec-manage">
+    <div class="container">
+      <div class="section-header" id="manageHeader">
+        <h2 class="section-title" style="background: linear-gradient(135deg, var(--green), var(--accent-1)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip:text;">
+          How to Manage It ✨
+        </h2>
+        <p class="section-sub">Strategies to keep your context under control — click each to see how it works.</p>
+      </div>
+
+      <div class="strategies-grid" id="strategiesGrid">
+        <!-- Card 1: Sliding Window -->
+        <div class="strategy-card" data-strategy="sliding" id="strategySlidingWindow">
+
+          <div class="strategy-name">Sliding Window</div>
+          <div class="strategy-desc">Keep the system prompt + last N messages. Older messages slide out as new ones come in.</div>
+          <div class="strategy-visual">
+            <div class="sw-demo">
+              <div class="sw-track">
+                <div class="sw-msg">M1</div><div class="sw-msg">M2</div><div class="sw-msg">M3</div><div class="sw-msg">M4</div>
+                <div class="sw-msg">M5</div><div class="sw-msg">M6</div><div class="sw-msg">M7</div><div class="sw-msg">M8</div>
+                <div class="sw-msg">M9</div><div class="sw-msg">M10</div><div class="sw-msg">M11</div><div class="sw-msg">M12</div>
+                <div class="sw-msg">M13</div><div class="sw-msg">M14</div><div class="sw-msg">M15</div>
+              </div>
+              <div class="sw-window"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Summarization -->
+        <div class="strategy-card" data-strategy="summarize" id="strategySummarization">
+
+          <div class="strategy-name">Summarization</div>
+          <div class="strategy-desc">Periodically summarize older messages into a compact digest. Keeps the gist, drops the verbosity.</div>
+          <div class="strategy-visual">
+            <div class="summ-demo">
+              <div class="summ-box">
+                <div class="summ-line-box collapsible"></div>
+                <div class="summ-line-box collapsible"></div>
+                <div class="summ-line-box collapsible"></div>
+                <div class="summ-line-box"></div>
+                <div class="summ-line-box"></div>
+                <div class="summ-line-box collapsible"></div>
+              </div>
+              <div class="summ-arrow-down">⬇ summary</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: RAG -->
+        <div class="strategy-card" data-strategy="rag" id="strategyRAG">
+
+          <div class="strategy-name">RAG (Retrieval)</div>
+          <div class="strategy-desc">Don't stuff everything in. Retrieve only what's relevant from external storage when you need it.</div>
+          <div class="strategy-visual">
+            <div class="rag-demo-wrap">
+              <div class="rag-db">
+                <div class="rag-db-chunk"></div><div class="rag-db-chunk target"></div><div class="rag-db-chunk"></div><div class="rag-db-chunk"></div>
+                <div class="rag-db-chunk"></div><div class="rag-db-chunk"></div><div class="rag-db-chunk target"></div><div class="rag-db-chunk"></div>
+                <div class="rag-db-chunk"></div><div class="rag-db-chunk target"></div><div class="rag-db-chunk"></div><div class="rag-db-chunk"></div>
+              </div>
+              <div class="rag-beam">
+                <div class="rag-particle"></div>
+                <div class="rag-particle"></div>
+                <div class="rag-particle"></div>
+              </div>
+              <div class="rag-llm">
+                <div style="font-size:9px;color:var(--accent-1);font-weight:700">Context</div>
+                <div class="rag-llm-slot"></div>
+                <div class="rag-llm-slot"></div>
+                <div class="rag-llm-slot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Tool Result Trimming -->
+        <div class="strategy-card" data-strategy="trim" id="strategyTrimming">
+
+          <div class="strategy-name">Tool Result Trimming</div>
+          <div class="strategy-desc">Truncate or compress bulky tool outputs before they enter the context. Keep only what matters.</div>
+          <div class="strategy-visual">
+            <div class="trim-wrap">
+              <div class="trim-block animating">
+                <div style="font-size:9px;color:rgba(255,255,255,0.5)">Raw Output</div>
+                <div class="trim-line-item noise"></div>
+                <div class="trim-line-item noise"></div>
+                <div class="trim-line-item"></div>
+                <div class="trim-line-item noise"></div>
+                <div class="trim-line-item"></div>
+                <div class="trim-line-item noise"></div>
+                <div class="trim-line-item noise"></div>
+                <div class="trim-line-item"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5: Hierarchical Memory -->
+        <div class="strategy-card" data-strategy="memory" id="strategyMemory">
+
+          <div class="strategy-name">Hierarchical Memory</div>
+          <div class="strategy-desc">Short-term in context, mid-term in summaries, long-term in external storage. Like human memory.</div>
+          <div class="strategy-visual">
+            <div class="memory-wrap">
+              <div class="memory-tier">
+                <div>⚡</div>
+                <div style="flex:1">
+                  <div style="font-size:9px;color:var(--accent-1);font-weight:700">Working Memory</div>
+                  <div class="memory-bar-bg"><div class="memory-bar-fill"></div></div>
+                </div>
+              </div>
+              <div class="memory-flow"><div class="memory-particle"></div></div>
+              <div class="memory-tier">
+                <div>📋</div>
+                <div style="flex:1">
+                  <div style="font-size:9px;color:var(--yellow);font-weight:700">Mid-term (Summaries)</div>
+                  <div class="memory-bar-bg"><div class="memory-bar-fill"></div></div>
+                </div>
+              </div>
+              <div class="memory-flow"><div class="memory-particle"></div></div>
+              <div class="memory-tier">
+                <div>🗄️</div>
+                <div style="flex:1">
+                  <div style="font-size:9px;color:var(--green);font-weight:700">Long-term (Vector DB)</div>
+                  <div class="memory-bar-bg"><div class="memory-bar-fill"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 6: Bigger Window -->
+        <div class="strategy-card" data-strategy="bigger" id="strategyBiggerWindow">
+
+          <div class="strategy-name">Use a Bigger Window</div>
+          <div class="strategy-desc">Models now offer 128K–2M tokens. Sometimes the simplest fix: pick a model with a larger window.</div>
+          <div class="strategy-visual">
+            <div class="bigger-demo">
+              <div style="text-align:center">
+                <div class="bigger-box" style="width:28px;height:32px;border-color:var(--red)">
+                  <div class="bigger-box-inner" style="height:100%;background:var(--red);"></div>
+                </div>
+                <div style="font-size:10px;font-weight:700;color:var(--red);margin-top:4px">4K</div>
+              </div>
+              <div style="text-align:center">
+                <div class="bigger-box" style="width:40px;height:52px;border-color:var(--orange)">
+                  <div class="bigger-box-inner" style="height:65%;background:var(--orange);"></div>
+                </div>
+                <div style="font-size:10px;font-weight:700;color:var(--orange);margin-top:4px">32K</div>
+              </div>
+              <div style="text-align:center">
+                <div class="bigger-box" style="width:58px;height:76px;border-color:var(--yellow)">
+                  <div class="bigger-box-inner" style="height:40%;background:var(--yellow);"></div>
+                </div>
+                <div style="font-size:10px;font-weight:700;color:var(--yellow);margin-top:4px">128K</div>
+              </div>
+              <div style="text-align:center">
+                <div class="bigger-box" style="width:84px;height:110px;border-color:var(--green)">
+                  <div class="bigger-box-inner" style="height:18%;background:var(--green);"></div>
+                </div>
+                <div style="font-size:10px;font-weight:700;color:var(--green);margin-top:4px">1M+</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Built to demystify context windows · Interactive demo
+  </footer>
+
+  <script>
+    // ═══════════════════════════════════════════
+    // SECTION 1 — Bucket / Context Window Demo
+    // ═══════════════════════════════════════════
+    const MAX_TOKENS = 128000;
+    let currentTokens = 0;
+    let items = [];
+
+    function addItem(type, text, tokens) {
+      currentTokens += tokens;
+      items.push({ type, text, tokens });
+      renderBucket();
+    }
+
+    function resetBucket() {
+      currentTokens = 0;
+      items = [];
+      const bucket = document.getElementById('ctxBucket');
+      bucket.classList.remove('shake', 'pulse');
+      renderBucket();
+    }
+
+    function renderBucket() {
+      const fillPct = Math.min((currentTokens / MAX_TOKENS) * 100, 105);
+      const fill = document.getElementById('bucketFill');
+      const itemsEl = document.getElementById('bucketItems');
+      const counter = document.getElementById('tokenCount');
+
+      fill.style.height = fillPct + '%';
+      fill.className = 'bucket-fill';
+      if (fillPct > 90) fill.classList.add('overflow');
+      else if (fillPct > 70) fill.classList.add('danger');
+      else if (fillPct > 50) fill.classList.add('warning');
+
+      // Token counter
+      counter.textContent = currentTokens.toLocaleString();
+      counter.className = '';
+      if (currentTokens > MAX_TOKENS * 0.9) counter.classList.add('red');
+      else if (currentTokens > MAX_TOKENS * 0.5) counter.classList.add('yellow');
+      else counter.classList.add('green');
+
+      // Render items
+      itemsEl.innerHTML = '';
+      const visible = items.slice(-14); // show last 14
+      visible.forEach(item => {
+        const el = document.createElement('div');
+        el.className = `bucket-item item-${item.type}`;
+        if (currentTokens > MAX_TOKENS && items.indexOf(item) === items.length - 1) {
+          el.classList.add('item-overflow');
+        }
+        el.textContent = item.text;
+        itemsEl.appendChild(el);
+      });
+
+      // Overflow effect
+      const bucket = document.getElementById('ctxBucket');
+      if (currentTokens > MAX_TOKENS) {
+        bucket.classList.add('shake');
+        setTimeout(() => bucket.classList.add('pulse'), 300);
+      } else {
+        bucket.classList.remove('pulse');
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // SECTION 2 — Explosion Scenarios
+    // ═══════════════════════════════════════════
+    const scenarios = {
+      agent: {
+        icon: '🤖',
+        insight: 'In an <strong>agentic loop</strong>, each iteration adds tool calls, results, and reasoning to the context. It roughly <strong>doubles</strong> each step — exploding past 128K in just 5 steps.',
+        steps: [
+          { label: 'Start', tokens: 4000, detail: 'System prompt + user request' },
+          { label: 'Step 1', tokens: 12000, detail: '+8K: tool call + search results' },
+          { label: 'Step 2', tokens: 28000, detail: '+16K: reasoning + code gen' },
+          { label: 'Step 3', tokens: 58000, detail: '+30K: file reads + analysis' },
+          { label: 'Step 4', tokens: 110000, detail: '+52K: multi-tool chain' },
+          { label: 'Step 5', tokens: 160000, detail: '💥 +50K: overflow!' },
+        ]
+      },
+      rag: {
+        icon: '📄',
+        insight: 'A <strong>single large document</strong> can consume the entire context window by itself — leaving <strong>zero room</strong> for the LLM to reason or respond.',
+        steps: [
+          { label: 'System', tokens: 2000, detail: 'System prompt: 2K' },
+          { label: '📄 Upload\n80-page PDF', tokens: 132000, detail: '+130K: the entire document' },
+          { label: 'User\nQuestion', tokens: 133000, detail: '+1K: "Summarize this"' },
+          { label: '🤖\nAnswer?', tokens: 133000, detail: '❌ Only 0 tokens left!' },
+        ]
+      },
+      multi: {
+        icon: '🔗',
+        insight: 'In a <strong>multi-turn chat</strong>, every message stays in context. Each turn adds both the user message and the full assistant response — quietly filling the window.',
+        steps: [
+          { label: 'Turn 1', tokens: 3000, detail: 'First Q&A' },
+          { label: 'Turn 3', tokens: 12000, detail: '+9K accumulated' },
+          { label: 'Turn 5', tokens: 28000, detail: '+16K accumulated' },
+          { label: 'Turn 10', tokens: 55000, detail: '+27K accumulated' },
+          { label: 'Turn 15', tokens: 85000, detail: '+30K accumulated' },
+          { label: 'Turn 20', tokens: 115000, detail: '+30K accumulated' },
+          { label: 'Turn 25', tokens: 145000, detail: '💥 +30K: overflow!' },
+        ]
+      }
+    };
+
+    let activeScenario = 'agent';
+    let playing = false;
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeScenario = btn.dataset.scenario;
+        playing = false;
+        const pbtn = document.getElementById('playBtn');
+        pbtn.textContent = '▶ Play Scenario';
+        pbtn.style.opacity = '1';
+        pbtn.style.pointerEvents = 'auto';
+        renderTimeline(scenarios[activeScenario], false);
+        updateInsight();
+      });
+    });
+
+    function updateInsight() {
+      const s = scenarios[activeScenario];
+      document.getElementById('scenarioInsight').innerHTML =
+        `<span class="icon">${s.icon}</span><span>${s.insight}</span>`;
+    }
+
+    function formatTokens(t) {
+      return t >= 1000 ? Math.round(t / 1000) + 'K' : t + '';
+    }
+
+    function renderTimeline(scenario, animated) {
+      const container = document.getElementById('timeline');
+      const limitLine = document.getElementById('limitLine');
+      container.innerHTML = '';
+      container.appendChild(limitLine);
+
+      // Scale: the chart always goes to 180K so bars have room to overflow
+      const chartMax = 180000;
+      const limitPct = (MAX_TOKENS / chartMax) * 100; // ~71%
+      limitLine.style.bottom = limitPct + '%';
+
+      scenario.steps.forEach((step, i) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'timeline-bar-wrapper';
+
+        const bar = document.createElement('div');
+        bar.className = 'timeline-bar';
+        const heightPct = Math.min((step.tokens / chartMax) * 100, 100);
+        const isOverflow = step.tokens > MAX_TOKENS;
+
+        // Color: green → yellow → red as approaching limit
+        const ratio = step.tokens / MAX_TOKENS;
+        let barColor;
+        if (isOverflow) {
+          barColor = 'linear-gradient(180deg, #dc262688, #dc2626)';
+        } else if (ratio > 0.75) {
+          barColor = 'linear-gradient(180deg, #f59e0b88, #f59e0b)';
+        } else if (ratio > 0.4) {
+          barColor = `linear-gradient(180deg, #eab30888, #eab308)`;
+        } else {
+          barColor = `linear-gradient(180deg, #34d39988, #34d399)`;
+        }
+        bar.style.background = barColor;
+
+        // Always-visible token count on top of bar
+        const tokenLabel = document.createElement('div');
+        tokenLabel.className = 'bar-token-label' + (isOverflow ? ' overflow' : '');
+        tokenLabel.textContent = formatTokens(step.tokens);
+
+        // Hover detail tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'bar-tooltip';
+        tooltip.textContent = step.detail;
+        bar.appendChild(tooltip);
+        bar.appendChild(tokenLabel);
+
+        if (animated) {
+          bar.style.height = '0px';
+          setTimeout(() => {
+            bar.style.height = heightPct + '%';
+            tokenLabel.classList.add('show');
+          }, i * 500 + 100);
+        } else {
+          bar.style.height = heightPct + '%';
+          tokenLabel.classList.add('show');
+        }
+
+        const label = document.createElement('div');
+        label.className = 'timeline-label';
+        label.innerHTML = step.label.replace('\n', '<br>');
+
+        wrapper.appendChild(bar);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
+      });
+    }
+
+    function playScenario() {
+      if (playing) return;
+      playing = true;
+      const btn = document.getElementById('playBtn');
+      btn.textContent = '⏳ Playing...';
+      btn.style.opacity = '0.6';
+      btn.style.pointerEvents = 'none';
+
+      // First reset bars to zero, then animate up
+      const container = document.getElementById('timeline');
+      const limitLine = document.getElementById('limitLine');
+      container.innerHTML = '';
+      container.appendChild(limitLine);
+
+      // Small delay then render animated
+      setTimeout(() => {
+        renderTimeline(scenarios[activeScenario], true);
+      }, 100);
+
+      const totalTime = scenarios[activeScenario].steps.length * 500 + 800;
+      setTimeout(() => {
+        playing = false;
+        btn.textContent = '▶ Play Again';
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+      }, totalTime);
+    }
+
+    // Initial render
+    renderTimeline(scenarios['agent'], false);
+
+    // ═══════════════════════════════════════════
+    // SECTION 3 — Strategy cards toggle + animations
+    // ═══════════════════════════════════════════
+    document.querySelectorAll('.strategy-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Don't toggle if clicking play button
+        if (e.target.closest('.play-btn')) return;
+        card.classList.toggle('active');
+      });
+    });
+
+    // Scroll-triggered card animations
+    const cardObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const card = entry.target;
+          // Stagger based on index
+          const cards = Array.from(document.querySelectorAll('.strategy-card'));
+          const idx = cards.indexOf(card);
+          setTimeout(() => {
+            card.classList.add('visible');
+          }, idx * 120);
+          cardObserver.unobserve(card);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.strategy-card').forEach(card => {
+      cardObserver.observe(card);
+    });
+
+    // Section header scroll animation
+    const headerObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          headerObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+
+    const manageHeader = document.getElementById('manageHeader');
+    if (manageHeader) headerObserver.observe(manageHeader);
+
+    // ═══════════════════════════════════════════
+    // Navigation dots — scroll spy
+    // ═══════════════════════════════════════════
+    const sections = document.querySelectorAll('section');
+    const dots = document.querySelectorAll('.nav-dot');
+
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        const idx = parseInt(dot.dataset.section);
+        sections[idx].scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const idx = Array.from(sections).indexOf(entry.target);
+          dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+        }
+      });
+    }, { threshold: 0.5 });
+
+    sections.forEach(s => observer.observe(s));
+  </script>
+</body>
+</html>
