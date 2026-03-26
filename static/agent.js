@@ -86,6 +86,7 @@ async function renderPlan(plan, steps) {
     let badgeText  = '💭 LLM';
     if (hint === 'get_datetime') { badgeClass = 'datetime';   badgeText = '🔧 datetime'; }
     if (hint === 'calculate')    { badgeClass = 'calculator'; badgeText = '🔧 calculate'; }
+    if (hint === 'web_search')   { badgeClass = 'web-search'; badgeText = '🌐 web search'; }
 
     const item = document.createElement('div');
     item.className = 'plan-task';
@@ -110,7 +111,9 @@ async function renderExecution(steps) {
 
     let toolSection = '';
     if (hasTool) {
-      const toolIcon = s.tool_used === 'get_datetime' ? '🕒' : '🧮';
+      let toolIcon = '🧮';
+      if (s.tool_used === 'get_datetime') toolIcon = '🕒';
+      if (s.tool_used === 'web_search') toolIcon = '🌐';
       toolSection = `
         <div class="exec-tool-call">
           <span class="exec-tool-name">${toolIcon} ${escHtml(s.tool_used)}</span>

@@ -37,13 +37,15 @@ def run_stock_agent(ticker: str) -> dict:
                         "Break the task into exactly 5 concrete sub-tasks.\n"
                         "- Task 1 MUST use tool_hint='get_datetime' and needs_tool=true "
                         "(record today's date for the analysis).\n"
+                        "- Task 2 MUST use tool_hint='web_search' and needs_tool=true "
+                        "(search the live internet for recent news or earnings updates).\n"
                         "- Task 3 MUST use tool_hint='calculate' and needs_tool=true "
                         "(use a real arithmetic expression; e.g. estimate market cap or "
                         "a simple ratio from widely known numbers).\n"
-                        "- Tasks 2, 4, 5 are pure LLM (needs_tool=false, tool_hint='none').\n"
+                        "- Tasks 4, 5 are pure LLM (needs_tool=false, tool_hint='none').\n"
                         "Return ONLY valid JSON:\n"
                         '{"tasks":[{"id":1,"description":"...","needs_tool":true,'
-                        '"tool_hint":"get_datetime|calculate|none"}]}'
+                        '"tool_hint":"get_datetime|web_search|calculate|none"}]}'
                     ),
                 },
                 {
@@ -93,12 +95,19 @@ def run_stock_agent(ticker: str) -> dict:
             )
             msg = r.choices[0].message
             if msg.tool_calls:
-                tc = msg.tool_calls[0]
-                args = json.loads(tc.function.arguments) if tc.function.arguments else {}
-                tool_out = execute_tool(tc.function.name, args)
-                step["tool_used"] = tc.function.name
-                step["tool_result"] = tool_out
-                msgs = msgs + [msg, {"role": "tool", "content": tool_out, "tool_call_id": tc.id}]
+                msgs.append(msg)
+                used_tools = []
+                used_results = []
+                for tc in msg.tool_calls:
+                    args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                    tool_out = str(execute_tool(tc.function.name, args))
+                    used_tools.append(tc.function.name)
+                    used_results.append(tool_out)
+                    msgs.append({"role": "tool", "content": tool_out, "tool_call_id": tc.id})
+                
+                step["tool_used"] = used_tools[0] if len(used_tools) == 1 else ", ".join(used_tools)
+                step["tool_result"] = used_results[0] if len(used_results) == 1 else " | ".join(used_results)
+                
                 final = _track(client.chat.completions.create(model=MODEL, messages=msgs))
                 step["result"] = final.choices[0].message.content
             else:

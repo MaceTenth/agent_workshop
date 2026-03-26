@@ -2,6 +2,8 @@ import ast
 import operator
 from datetime import datetime
 
+from web_search import run_web_search
+
 # ── OpenAI function-calling schema ────────────────────────────
 TOOLS = [
     {
@@ -30,6 +32,23 @@ TOOLS = [
                     }
                 },
                 "required": ["expression"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "Searches the live internet for recent news, quotes, and information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to look up online.",
+                    }
+                },
+                "required": ["query"],
             },
         },
     },
@@ -89,4 +108,6 @@ def execute_tool(name: str, arguments: dict) -> str:
         return _get_datetime()
     if name == "calculate":
         return _calculate(arguments.get("expression", ""))
+    if name == "web_search":
+        return run_web_search(arguments.get("query", ""))
     return f"Unknown tool: {name}"

@@ -303,6 +303,7 @@
 }
 .tool-badge.datetime   { background: #1a2e1a; color: #86efac; }
 .tool-badge.calculator { background: #1a1f3a; color: #93c5fd; }
+.tool-badge.web-search { background: #3b0764; color: #d8b4fe; }
 .tool-badge.llm        { background: var(--surface2); color: var(--text-muted); }
 
 /* ── Execution list ───────────────────────────────── */
