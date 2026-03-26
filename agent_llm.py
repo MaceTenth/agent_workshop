@@ -9,7 +9,7 @@ client = OpenAI()
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
-def run_stock_agent(ticker: str) -> dict:
+def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
     """
     Full multi-step agent loop for stock analysis:
       1. PLAN    — decompose the task into sub-steps
@@ -128,11 +128,12 @@ def run_stock_agent(ticker: str) -> dict:
                     "role": "system",
                     "content": (
                         "You are a senior financial analyst. Write an investment summary "
+                        f"tailored for an investor with a **{risk_tolerance.upper()}** risk tolerance.\n"
                         "using exactly these bold headers:\n"
                         "**Company Snapshot** — brief description of the business\n"
                         "**Key Strengths** — 2-3 bullet points\n"
                         "**Key Risks** — 2-3 bullet points\n"
-                        "**Recommendation** — BUY / HOLD / SELL with a one-sentence rationale\n"
+                        f"**Recommendation** — BUY / HOLD / SELL with a one-sentence rationale taking into account the user's {risk_tolerance} risk profile.\n"
                         "Keep each section to 2-3 sentences. "
                         "Remind the reader this is based on training data, not live prices."
                     ),

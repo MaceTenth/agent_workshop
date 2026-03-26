@@ -22,11 +22,12 @@ class PlanRequest(BaseModel):
 
 class AgentRequest(BaseModel):
     ticker: str
+    risk_tolerance: str = "moderate"
 
 
 @app.post("/agent")
 async def agent(request: AgentRequest):
-    result = run_stock_agent(request.ticker)
+    result = run_stock_agent(request.ticker, request.risk_tolerance)
     return result
 
 

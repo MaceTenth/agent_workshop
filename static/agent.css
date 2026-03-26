@@ -27,11 +27,32 @@
   flex-shrink: 0;
 }
 
-.agent-input-row {
+.input-col {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
 }
+
+.input-btn-col {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 2px;
+}
+
+.risk-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 12px;
+  border-radius: 8px;
+  width: 130px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.risk-select:focus { border-color: var(--accent); }
 
 .ticker-input {
   background: var(--surface2);

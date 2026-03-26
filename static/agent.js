@@ -26,6 +26,7 @@ runBtn.addEventListener('click', runAgent);
 // ── Main agent function ───────────────────────────────────────────────────────
 async function runAgent() {
   const ticker = tickerInput.value.trim().toUpperCase();
+  const risk_tolerance = document.getElementById('risk-select').value;
   if (!ticker) { tickerInput.focus(); return; }
 
   // --- Show loading ---
@@ -39,7 +40,7 @@ async function runAgent() {
     const res = await fetch('/agent', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ticker }),
+      body:    JSON.stringify({ ticker, risk_tolerance }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data = await res.json();

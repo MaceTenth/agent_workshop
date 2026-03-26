@@ -23,12 +23,25 @@
   <!-- ── Input bar ── -->
   <div class="agent-input-bar">
     <div class="agent-input-inner">
-      <span class="agent-input-label">Stock ticker</span>
-      <div class="agent-input-row">
-        <input id="ticker-input" class="ticker-input" type="text"
-               placeholder="e.g. AAPL" maxlength="10" autocomplete="off" />
+      <div class="input-btn-col">
         <button id="run-btn" class="run-btn">▶ Analyze</button>
       </div>
+
+      <div class="input-col">
+        <span class="agent-input-label">Stock ticker</span>
+        <input id="ticker-input" class="ticker-input" type="text"
+               placeholder="e.g. AAPL" maxlength="10" autocomplete="off" />
+      </div>
+
+      <div class="input-col">
+        <span class="agent-input-label">Risk profile</span>
+        <select id="risk-select" class="risk-select">
+          <option value="conservative">Conservative</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="aggressive">Aggressive</option>
+        </select>
+      </div>
+
       <div class="ticker-chips">
         <span class="chips-label">Try:</span>
         <button class="chip" data-ticker="AAPL">AAPL</button>
