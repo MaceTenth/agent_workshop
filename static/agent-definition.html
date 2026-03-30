@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Workshop — What is an Agent?</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="agent-definition.css" />
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="back-link" style="text-decoration:none; color:var(--text-muted); font-size:12px; font-weight:600;">← Home</a>
+    <div class="header-icon" style="background:#db2777; margin-left: 20px;">💡</div>
+    <div class="header-titles">
+      <h1>What is an Agent?</h1>
+      <p>Deterministic vs. Non-deterministic execution paths</p>
+    </div>
+    <a href="control-loop.html" class="back-link" style="margin-left:auto; text-decoration:none; color:var(--text-muted); font-size:12px; font-weight:600;">Agent Control Loop →</a>
+  </header>
+
+  <!-- Control Bar -->
+  <div class="scenario-bar">
+    <button id="run-btn" class="run-btn">▶ Run Simulation</button>
+    <button id="reset-btn" class="run-btn secondary hidden">↻ Reset</button>
+    <div class="definition-quote">
+      "If you know the outcome, it's <strong>code (or maybe a fancy automation)</strong>. An agent is software that makes decisions where the outcome is <strong>not known</strong>, and the steps are determined by <strong>previous results</strong>."
+    </div>
+  </div>
+
+  <main class="definition-main">
+    
+    <!-- Left: Traditional Code -->
+    <section class="def-side code-side">
+      <div class="def-header">
+        <h2>Traditional Code / Automation</h2>
+        <p>Fixed steps, predetermined outcome</p>
+      </div>
+      
+      <div class="viz-area">
+        <div class="viz-box">
+          <!-- SVG for connections -->
+          <svg class="def-connections" viewBox="0 0 400 400">
+            <!-- Static straight path -->
+            <path id="path-code" class="path-line stroke-blue" d="M 200,50 L 200,150 L 200,250 L 200,350" />
+            <circle id="particle-code" class="flow-particle particle-blue hidden" r="6" />
+          </svg>
+          
+          <!-- Nodes -->
+          <div class="def-node node-blue" id="code-step-1" style="top:25px; left:150px;">
+            <div class="dn-icon">📥</div>
+            <div class="dn-text">Input Data</div>
+          </div>
+          
+          <div class="def-node node-blue" id="code-step-2" style="top:125px; left:150px;">
+            <div class="dn-icon">⚙️</div>
+            <div class="dn-text">Process (if A then B)</div>
+          </div>
+          
+          <div class="def-node node-blue" id="code-step-3" style="top:225px; left:150px;">
+            <div class="dn-icon">💾</div>
+            <div class="dn-text">Save to DB</div>
+          </div>
+
+          <div class="def-outcome outcome-blue" id="code-outcome" style="top:325px; left:140px;">
+            <div class="out-title">KNOWN OUTCOME</div>
+            <div class="out-sub">Always exact same result</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="log-area" id="log-code"></div>
+    </section>
+
+    <!-- Right: AI Agent -->
+    <section class="def-side agent-side">
+      <div class="def-header">
+        <h2>AI Agent</h2>
+        <p>Dynamic decisions, unknown outcome</p>
+      </div>
+
+      <div class="viz-area">
+        <div class="viz-box">
+          <svg class="def-connections" viewBox="0 0 400 400">
+            <!-- Variable paths from Core -->
+            <path id="path-agent-init" class="path-line stroke-purple" d="M 200,50 L 200,150" />
+            
+            <!-- Possible dynamic diverging paths (hidden initially) -->
+            <path id="path-agent-branchA" class="path-line stroke-purple path-hidden" d="M 200,150 C 130,180 80,220 80,250" />
+            <path id="path-agent-branchB" class="path-line stroke-purple path-hidden" d="M 200,150 C 270,180 320,220 320,250" />
+            
+            <path id="path-agent-finalA" class="path-line stroke-purple path-hidden" d="M 80,250 C 130,300 200,320 200,350" />
+            <path id="path-agent-finalB" class="path-line stroke-purple path-hidden" d="M 320,250 C 270,300 200,320 200,350" />
+
+            <circle id="particle-agent" class="flow-particle particle-purple hidden" r="6" />
+          </svg>
+
+          <!-- Nodes -->
+          <div class="def-node node-purple" id="agent-input" style="top:25px; left:150px;">
+            <div class="dn-icon">📥</div>
+            <div class="dn-text">Ambiguous Goal</div>
+          </div>
+          
+          <!-- Center LLM Core -->
+          <div class="def-node-core" id="agent-core" style="top:115px; left:165px;">
+            <div class="core-icon">🧠</div>
+            <div class="core-label">LLM DECIDES</div>
+          </div>
+          
+          <!-- Options it could take -->
+          <div class="def-node node-purple node-option" id="agent-opt-search" style="top:225px; left:30px;">
+            <div class="dn-icon">🌐</div>
+            <div class="dn-text">Web Search</div>
+          </div>
+          <div class="def-node node-purple node-option" id="agent-opt-calc" style="top:225px; left:270px;">
+            <div class="dn-icon">🧮</div>
+            <div class="dn-text">Calculate</div>
+          </div>
+
+          <div class="def-outcome outcome-purple" id="agent-outcome" style="top:325px; left:140px;">
+            <div class="out-title">UNKNOWN OUTCOME</div>
+            <div class="out-sub">Emergent solution</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="log-area" id="log-agent"></div>
+    </section>
+
+  </main>
+
+  <div class="footer-note">
+    <div class="note-icon">⚠️</div>
+    <strong>Why is it hard to create and debug?</strong> Because steps are determined by previous results at runtime, you can't easily foresee every exact path or edge case the LLM might take!
+  </div>
+
+  <script src="agent-definition.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Workshop — Control Loop</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="control-loop.css" />
+</head>
+<body>
+
+  <header>
+    <a href="/index.html" class="back-link" style="text-decoration:none; color:var(--text-muted); font-size:12px; font-weight:600;">← Home</a>
+    <div class="header-icon" style="background:var(--purple); margin-left: 20px;">🔄</div>
+    <div class="header-titles">
+      <h1>The Agent Control Loop</h1>
+      <p>Observe → Reason → Act → Reflect — A continuous cycle</p>
+    </div>
+    <a href="/agent.html" class="back-link" style="margin-left:auto; text-decoration:none; color:var(--text-muted); font-size:12px; font-weight:600;">Agent in Action →</a>
+  </header>
+
+  <div class="scenario-bar">
+    <div class="scenario-label">Current Task:</div>
+    <div class="scenario-task">"What is the weather in my exact current location today?"</div>
+    <button id="start-btn" class="run-btn">▶ Run Loop</button>
+    <button id="reset-btn" class="run-btn secondary hidden">↻ Reset</button>
+  </div>
+
+  <main class="loop-main">
+    
+    <!-- ── Left: The Visualization ── -->
+    <section class="viz-section">
+      <div class="viz-container">
+        <!-- SVG lines linking the nodes -->
+        <svg class="connection-lines" viewBox="0 0 400 400">
+          <!-- Outline path -->
+          <path class="track-line" d="M200,80 Q320,80 320,200 Q320,320 200,320 Q80,320 80,200 Q80,80 200,80" fill="none" />
+          <!-- Flow particle overlay (animated via JS) -->
+          <path id="particle-path" class="particle-path" d="M200,80 Q320,80 320,200 Q320,320 200,320 Q80,320 80,200 Q80,80 200,80" fill="none" stroke="transparent" />
+          <circle id="flow-particle" class="flow-particle hidden" r="6" cx="0" cy="0" />
+        </svg>
+
+        <!-- Center Agent Core -->
+        <div class="node-agent-core">
+          <div class="core-icon">🧠</div>
+          <div class="core-label">AGENT CORE</div>
+        </div>
+
+        <!-- Node: Observe (Top) -->
+        <div id="node-observe" class="loop-node node-top">
+          <div class="node-badge">1</div>
+          <div class="node-icon">👀</div>
+          <div class="node-title">OBSERVE</div>
+          <div class="node-sub">Read Context</div>
+        </div>
+
+        <!-- Node: Reason (Right) -->
+        <div id="node-reason" class="loop-node node-right">
+          <div class="node-badge">2</div>
+          <div class="node-icon">💭</div>
+          <div class="node-title">REASON</div>
+          <div class="node-sub">Think & Plan</div>
+        </div>
+
+        <!-- Node: Act (Bottom) -->
+        <div id="node-act" class="loop-node node-bottom">
+          <div class="node-badge">3</div>
+          <div class="node-icon">⚡</div>
+          <div class="node-title">ACT</div>
+          <div class="node-sub">Call Tools</div>
+        </div>
+
+        <!-- Node: Reflect (Left) -->
+        <div id="node-reflect" class="loop-node node-left">
+          <div class="node-badge">4</div>
+          <div class="node-icon">🤔</div>
+          <div class="node-title">REFLECT</div>
+          <div class="node-sub">Review Result</div>
+        </div>
+        
+      </div>
+
+      <!-- Current status readout below the visualization -->
+      <div class="status-readout">
+        <div class="status-label">Agent Internal State</div>
+        <div id="status-text" class="status-text">Waiting to start the control loop...</div>
+      </div>
+    </section>
+
+    <!-- ── Right: The Trace Log ── -->
+    <section class="trace-section">
+      <div class="trace-header">
+        <span class="trace-icon">📜</span>
+        <h2>Execution Trace</h2>
+        <span id="iteration-badge" class="iteration-badge">ITERATION 0</span>
+      </div>
+      <div id="trace-log" class="trace-log">
+        <div class="empty-trace">Click "Run Loop" to see the agent work through the problem step by step.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="control-loop.js"></script>
+</body>
+</html>
