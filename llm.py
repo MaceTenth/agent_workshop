@@ -53,13 +53,19 @@ def llm_with_memory(messages: list[dict]) -> tuple[str, dict]:
     Stateful LLM call.
     The full conversation history is passed on every request so the model
     can reference earlier turns.
+
+    Context management — compaction: once the history approaches the context
+    window, Claude summarizes the earlier turns server-side instead of failing
+    or silently dropping them, so the conversation can keep going.
     Returns (content, usage).
     """
-    response = client.messages.create(
+    response = client.beta.messages.create(
+        betas=["compact-2026-01-12"],
         model=MODEL,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=messages,
+        context_management={"edits": [{"type": "compact_20260112"}]},
     )
     return _text(response), _usage(response)
 
@@ -69,6 +75,10 @@ def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
     Agentic loop with Claude tool use.
     Calls the model, executes any tool calls, feeds results back, and
     repeats until the model returns a final text response.
+
+    Context management — context editing: as the loop accumulates tool
+    results across turns, older ones are cleared server-side so a long
+    agentic run doesn't exhaust the context window.
     Returns (content, accumulated_usage, list_of_tool_invocations).
     """
     from tools import TOOLS, execute_tool
@@ -79,12 +89,14 @@ def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
 
     # The control loop
     while True:
-        response = client.messages.create(
+        response = client.beta.messages.create(
+            betas=["context-management-2025-06-27"],
             model=MODEL,
             max_tokens=MAX_TOKENS,
             system=SYSTEM_PROMPT,
             messages=msgs,
             tools=TOOLS,
+            context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
         )
         for k, v in _usage(response).items():
             total_usage[k] += v

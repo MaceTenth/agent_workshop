@@ -122,13 +122,17 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
         msgs = [{"role": "user", "content": user_content}]
 
         if needs_tool:
+            # Context editing clears stale tool results server-side so a
+            # long agentic run doesn't exhaust the context window.
             r = _track(
-                client.messages.create(
+                client.beta.messages.create(
+                    betas=["context-management-2025-06-27"],
                     model=MODEL,
                     max_tokens=MAX_TOKENS,
                     system=system_prompt,
                     messages=msgs,
                     tools=TOOLS,
+                    context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
                 )
             )
             tool_uses = [b for b in r.content if b.type == "tool_use"]
