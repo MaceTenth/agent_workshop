@@ -199,21 +199,22 @@
     user   = <span class="str">f"Explain </span><span class="interp">{topic}</span><span class="str"> assuming a </span><span class="interp">{level}</span><span class="str"> audience."</span>
 
     <span class="cm"># Duplicated every time. No reuse. Easy to break.</span>
-    response = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    response = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
+        system=system,
         messages=[
-            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: system},
-            {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: user},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: user},
         ]
     )
-    <span class="kw">return</span> response.choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> response.content[<span class="num">0</span>].text
 
 <span class="cm"># Every call site must know the template structure</span>
 result = ask_llm(<span class="str">"machine learning"</span>, <span class="str">"beginner"</span>)</pre>
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain</div>
-          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+          <pre class="code-block"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
 
 <span class="cm"># Defined once, reused everywhere, versioned in Hub</span>
@@ -222,7 +223,7 @@ prompt = ChatPromptTemplate.from_messages([
     (<span class="str">"human"</span>,  <span class="str">"Explain {topic} assuming a {level} audience."</span>),
 ])
 
-llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm   = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 chain = prompt | llm   <span class="cm"># LCEL pipe operator</span>
 
 <span class="cm"># Clean call site — just pass the variables</span>
@@ -238,18 +239,20 @@ result = chain.invoke({<span class="str">"topic"</span>: <span class="str">"mach
 <span class="cm"># Each step must manually thread state to the next</span>
 
 <span class="kw">def</span> <span class="fn">summarise</span>(text):
-    r = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    r = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
         messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">f"Summarise: </span><span class="interp">{text}</span><span class="str">"</span>}]
     )
-    <span class="kw">return</span> r.choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> r.content[<span class="num">0</span>].text
 
 <span class="kw">def</span> <span class="fn">translate_to_french</span>(text):
-    r = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    r = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
         messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">f"Translate to French: </span><span class="interp">{text}</span><span class="str">"</span>}]
     )
-    <span class="kw">return</span> r.choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> r.content[<span class="num">0</span>].text
 
 <span class="cm"># Manually chained — fragile, verbose, hard to swap steps</span>
 summary   = summarise(long_article)
@@ -257,11 +260,11 @@ french    = translate_to_french(summary)</pre>
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain (LCEL)</div>
-          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+          <pre class="code-block"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
 <span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
 
-llm    = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm    = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 parser = StrOutputParser()
 
 summarise_chain = (
@@ -288,30 +291,28 @@ result = pipeline.invoke({<span class="str">"text"</span>: long_article})</pre>
           <div class="code-header pain">😤 Raw Python (our agentic loop)</div>
           <pre class="code-block"><span class="cm"># tools.py — manual schema definition</span>
 TOOLS = [{
-    <span class="str">"type"</span>: <span class="str">"function"</span>,
-    <span class="str">"function"</span>: {
-        <span class="str">"name"</span>: <span class="str">"get_datetime"</span>,
-        <span class="str">"description"</span>: <span class="str">"Returns current date and time"</span>,
-        <span class="str">"parameters"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {}}
-    }
+    <span class="str">"name"</span>: <span class="str">"get_datetime"</span>,
+    <span class="str">"description"</span>: <span class="str">"Returns current date and time"</span>,
+    <span class="str">"input_schema"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {}}
 }]
 
 <span class="cm"># llm.py — manual while-loop with tool dispatch</span>
 <span class="kw">while</span> <span class="kw">True</span>:
-    response = client.chat.completions.create(
-        model=MODEL, messages=msgs,
-        tools=TOOLS, tool_choice=<span class="str">"auto"</span>
+    response = client.messages.create(
+        model=MODEL, max_tokens=<span class="num">1024</span>,
+        messages=msgs, tools=TOOLS
     )
-    <span class="kw">if not</span> response.choices[<span class="num">0</span>].message.tool_calls:
+    <span class="kw">if</span> response.stop_reason != <span class="str">"tool_use"</span>:
         <span class="kw">break</span>
-    <span class="kw">for</span> tc <span class="kw">in</span> response.choices[<span class="num">0</span>].message.tool_calls:
-        result = execute_tool(tc.function.name, ...)
-        msgs.append({<span class="str">"role"</span>: <span class="str">"tool"</span>, <span class="str">"content"</span>: result, ...})</pre>
+    <span class="kw">for</span> block <span class="kw">in</span> response.content:
+        <span class="kw">if</span> block.type != <span class="str">"tool_use"</span>: <span class="kw">continue</span>
+        result = execute_tool(block.name, block.input)
+        msgs.append({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: [{...}]})</pre>
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain</div>
           <pre class="code-block"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
-<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> langchain.agents <span class="kw">import</span> AgentExecutor, create_tool_calling_agent
 <span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
 
@@ -322,7 +323,7 @@ TOOLS = [{
     <span class="kw">from</span> datetime <span class="kw">import</span> datetime
     <span class="kw">return</span> datetime.now().isoformat()
 
-llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm   = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 agent = create_tool_calling_agent(llm, [get_datetime], prompt)
 
 <span class="cm"># Loop, tool dispatch, error handling — all handled</span>
@@ -340,11 +341,12 @@ result   = executor.invoke({<span class="str">"input"</span>: <span class="str">
 <span class="kw">def</span> <span class="fn">extract_person</span>(text):
     prompt = (<span class="str">f"Extract the person's name and age from: </span><span class="interp">{text}</span><span class="str">\n"</span>
               <span class="str">"Return only valid JSON: {\"name\": ..., \"age\": ...}"</span>)
-    response = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    response = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
         messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}]
     )
-    raw = response.choices[<span class="num">0</span>].message.content
+    raw = response.content[<span class="num">0</span>].text
 
     <span class="cm"># Model sometimes wraps in markdown fences — strip manually</span>
     raw = raw.strip(<span class="str">"`"</span>).lstrip(<span class="str">"json"</span>).strip()
@@ -355,7 +357,7 @@ result   = executor.invoke({<span class="str">"input"</span>: <span class="str">
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain + Pydantic</div>
-          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+          <pre class="code-block"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
 
 <span class="cm"># Define your schema — same Pydantic you already use</span>
@@ -363,7 +365,7 @@ result   = executor.invoke({<span class="str">"input"</span>: <span class="str">
     name: <span class="ty">str</span>
     age:  <span class="ty">int</span>
 
-llm      = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm      = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 extractor = llm.with_structured_output(Person)
 
 <span class="cm"># Always returns a Person object — never raw JSON strings,</span>

@@ -1,24 +1,36 @@
-import json
 import os
-from openai import OpenAI
+import anthropic
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# Resolves ANTHROPIC_API_KEY from the environment (loaded from .env above).
+client = anthropic.Anthropic()
+MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "2048"))
 
 
 SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 def _usage(response) -> dict:
+    """
+    Normalise Claude usage into the {prompt, completion, total} shape the
+    frontend expects. Claude reports input_tokens / output_tokens.
+    """
     u = response.usage
+    prompt = u.input_tokens
+    completion = u.output_tokens
     return {
-        "prompt_tokens": u.prompt_tokens,
-        "completion_tokens": u.completion_tokens,
-        "total_tokens": u.total_tokens,
+        "prompt_tokens": prompt,
+        "completion_tokens": completion,
+        "total_tokens": prompt + completion,
     }
+
+
+def _text(response) -> str:
+    """Concatenate the text blocks of a Claude response into a plain string."""
+    return "".join(b.text for b in response.content if b.type == "text")
 
 
 def simple_llm_call(user_message: str) -> tuple[str, dict]:
@@ -27,14 +39,13 @@ def simple_llm_call(user_message: str) -> tuple[str, dict]:
     No conversation history is maintained — each call is fully independent.
     Returns (content, usage).
     """
-    response = client.chat.completions.create(
+    response = client.messages.create(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
+        max_tokens=MAX_TOKENS,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
     )
-    return response.choices[0].message.content, _usage(response)
+    return _text(response), _usage(response)
 
 
 def llm_with_memory(messages: list[dict]) -> tuple[str, dict]:
@@ -44,57 +55,59 @@ def llm_with_memory(messages: list[dict]) -> tuple[str, dict]:
     can reference earlier turns.
     Returns (content, usage).
     """
-    response = client.chat.completions.create(
+    response = client.messages.create(
         model=MODEL,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+        max_tokens=MAX_TOKENS,
+        system=SYSTEM_PROMPT,
+        messages=messages,
     )
-    return response.choices[0].message.content, _usage(response)
+    return _text(response), _usage(response)
 
 
 def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
     """
-    Agentic loop with OpenAI function-calling tools.
+    Agentic loop with Claude tool use.
     Calls the model, executes any tool calls, feeds results back, and
     repeats until the model returns a final text response.
     Returns (content, accumulated_usage, list_of_tool_invocations).
     """
     from tools import TOOLS, execute_tool
 
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+    msgs = list(messages)
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     invocations = []
 
-
-
-    # The control loop 
+    # The control loop
     while True:
-        response = client.chat.completions.create(
+        response = client.messages.create(
             model=MODEL,
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM_PROMPT,
             messages=msgs,
             tools=TOOLS,
-            tool_choice="auto",
         )
         for k, v in _usage(response).items():
             total_usage[k] += v
 
-        msg = response.choices[0].message
+        if response.stop_reason != "tool_use":
+            return _text(response), total_usage, invocations
 
-        if not msg.tool_calls:
-            return msg.content, total_usage, invocations
+        # Append the assistant turn that contains the tool-use requests
+        msgs.append({"role": "assistant", "content": response.content})
 
-        # Append the assistant turn that contains the tool call requests
-        msgs.append(msg)
-
-        for tc in msg.tool_calls:
-            name = tc.function.name
-            args = json.loads(tc.function.arguments)
-            result = execute_tool(name, args)
-            invocations.append({"name": name, "args": args, "result": result})
-            msgs.append({
-                "role": "tool",
-                "tool_call_id": tc.id,
+        # Execute every tool the model asked for; return all results together
+        tool_results = []
+        for block in response.content:
+            if block.type != "tool_use":
+                continue
+            result = execute_tool(block.name, block.input)
+            invocations.append({"name": block.name, "args": block.input, "result": result})
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
                 "content": result,
             })
+        msgs.append({"role": "user", "content": tool_results})
 
 
 def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str]:
@@ -114,25 +127,27 @@ def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str
         f"Using the above employee data, answer: {user_message}"
     )
     msgs = list(history) + [{"role": "user", "content": augmented}]
-    response = client.chat.completions.create(
+    response = client.messages.create(
         model=MODEL,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + msgs,
+        max_tokens=MAX_TOKENS,
+        system=SYSTEM_PROMPT,
+        messages=msgs,
     )
-    return response.choices[0].message.content, _usage(response), context
+    return _text(response), _usage(response), context
 
 
 def llm_with_web_search(user_message: str, history: list[dict]) -> tuple[str, dict, str]:
     """
     Two-step web-search pipeline:
-      1. Call OpenAI's built-in web_search_preview (Responses API) to get
-         a fresh, web-grounded answer for the query.
+      1. Call Claude's built-in web_search server tool to get a fresh,
+         web-grounded answer for the query.
       2. Feed (search context + original message + optional history) into
-         our regular chat completions LLM to produce the final response.
+         our regular LLM to produce the final response.
     Returns (final_answer, usage, search_context).
     """
     from web_search import run_web_search
 
-    # Step 1 — live web search via the Responses API
+    # Step 1 — live web search via Claude's server-side web_search tool
     search_context = run_web_search(user_message)
 
     # Step 2 — synthesis: inject search results back into our regular LLM
@@ -141,8 +156,10 @@ def llm_with_web_search(user_message: str, history: list[dict]) -> tuple[str, di
         f"Using the above as context, answer: {user_message}"
     )
     msgs = list(history) + [{"role": "user", "content": synthesis_prompt}]
-    response = client.chat.completions.create(
+    response = client.messages.create(
         model=MODEL,
-        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + msgs,
+        max_tokens=MAX_TOKENS,
+        system=SYSTEM_PROMPT,
+        messages=msgs,
     )
-    return response.choices[0].message.content, _usage(response), search_context
+    return _text(response), _usage(response), search_context

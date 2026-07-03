@@ -6,7 +6,7 @@ Retrieval is done with keyword matching across all fields — enough to
 illustrate the Retrieve → Augment → Generate pattern clearly.
 
 In a real system you would replace retrieve() with a vector similarity
-search, e.g. OpenAI embeddings + FAISS, Chroma, Pinecone, pgvector, etc.
+search, e.g. Voyage AI embeddings + FAISS, Chroma, Pinecone, pgvector, etc.
 """
 
 EMPLOYEES = [

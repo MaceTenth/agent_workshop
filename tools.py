@@ -4,52 +4,43 @@ from datetime import datetime
 
 from web_search import run_web_search
 
-# ── OpenAI function-calling schema ────────────────────────────
+# ── Claude tool-use schema ────────────────────────────────────
 TOOLS = [
     {
-        "type": "function",
-        "function": {
-            "name": "get_datetime",
-            "description": "Returns the current local date and time.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
+        "name": "get_datetime",
+        "description": "Returns the current local date and time.",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "calculate",
+        "description": (
+            "Evaluates a safe arithmetic expression and returns the numeric result. "
+            "Supports +, -, *, /, //, %, ** and parentheses. "
+            "Example: '(3 + 5) * 2' returns '16'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "expression": {
+                    "type": "string",
+                    "description": "A math expression, e.g. '(3 + 5) * 2'",
+                }
+            },
+            "required": ["expression"],
         },
     },
     {
-        "type": "function",
-        "function": {
-            "name": "calculate",
-            "description": (
-                "Evaluates a safe arithmetic expression and returns the numeric result. "
-                "Supports +, -, *, /, //, %, ** and parentheses. "
-                "Example: '(3 + 5) * 2' returns '16'."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "expression": {
-                        "type": "string",
-                        "description": "A math expression, e.g. '(3 + 5) * 2'",
-                    }
-                },
-                "required": ["expression"],
+        "name": "web_search",
+        "description": "Searches the live internet for recent news, quotes, and information.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query to look up online.",
+                }
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": "Searches the live internet for recent news, quotes, and information.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query to look up online.",
-                    }
-                },
-                "required": ["query"],
-            },
+            "required": ["query"],
         },
     },
 ]

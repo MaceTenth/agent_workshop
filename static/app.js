@@ -17,7 +17,7 @@ const ctxFill     = document.getElementById('ctx-bar-fill');
 const ctxTokens   = document.getElementById('ctx-tokens');
 let emptyState    = document.getElementById('empty-state');
 
-const CTX_LIMIT = 128000; // gpt-4o-mini context window
+const CTX_LIMIT = 128000; // context meter scale (Claude supports up to 1M)
 
 // Conversation history kept in JS — sent only when memory toggle is ON
 let history   = [];
@@ -75,7 +75,7 @@ function updateUI() {
     modeText.innerHTML = '<strong>RAG on:</strong> Relevant employee records are retrieved by keyword and injected as context before your message.';
   } else if (webSearch) {
     banner.className   = 'websearch';
-    modeText.innerHTML = '<strong>Web Search on:</strong> OpenAI <code>web_search_preview</code> fetches live results, then feeds them into our LLM.';
+    modeText.innerHTML = '<strong>Web Search on:</strong> Claude\'s built-in <code>web_search</code> tool fetches live results, then feeds them into our LLM.';
   } else if (tools && mem) {
     banner.className   = 'tools';
     modeText.innerHTML = '<strong>Memory + Tools:</strong> Full history sent; model can also call tools.';

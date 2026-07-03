@@ -8,8 +8,8 @@ A hands-on FastAPI application that walks through the building blocks of AI agen
 |---|---|
 | **Stateless LLM** | Single, context-free call to the model |
 | **Memory** | Full conversation history passed on every request |
-| **Tools** | OpenAI function-calling (calculator, datetime) |
-| **Web Search** | Live grounding via OpenAI's `web_search_preview` |
+| **Tools** | Claude tool use (calculator, datetime) |
+| **Web Search** | Live grounding via Claude's built-in `web_search` server tool |
 | **RAG** | Retrieve → Augment → Generate with in-memory employee data |
 | **Planning** | Zero-shot, few-shot, chain-of-thought, decomposition, ReAct |
 | **Agent** | Multi-step stock analysis agent (Plan → Execute → Synthesise → Verify) |
@@ -27,7 +27,7 @@ cd agent_workshop
 
 ```bash
 cp .env.example .env
-# Edit .env and replace sk-... with your actual OpenAI API key
+# Edit .env and replace sk-ant-... with your actual Anthropic API key
 ```
 
 The `.env` file is listed in `.gitignore` and is **never** committed to the repository.
@@ -58,8 +58,8 @@ Requires [ngrok](https://ngrok.com) to be installed and authenticated.
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | *(required)* | Your OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Model used for all LLM calls |
+| `ANTHROPIC_API_KEY` | *(required)* | Your Anthropic API key |
+| `ANTHROPIC_MODEL` | `claude-sonnet-5` | Model used for all LLM calls |
 
 ## Sensitive Data Notice
 

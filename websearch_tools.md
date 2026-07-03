@@ -383,7 +383,7 @@ browser-use --connect open ...             # connect to already-running Chrome
 **Python SDK (async) — tool implementation**
 ```python
 from browser_use import Agent, Browser, BrowserConfig
-from langchain_openai import ChatOpenAI  # browser-use integrates with LangChain
+from langchain_anthropic import ChatAnthropic  # browser-use integrates with LangChain
 import asyncio
 
 async def _browser_task(task: str, url: str = None) -> str:
@@ -394,7 +394,7 @@ async def _browser_task(task: str, url: str = None) -> str:
     browser = Browser(config=BrowserConfig(headless=True))
     agent = Agent(
         task=f"{task}" + (f" Start at: {url}" if url else ""),
-        llm=ChatOpenAI(model="gpt-4o-mini"),
+        llm=ChatAnthropic(model="claude-sonnet-5"),
         browser=browser,
     )
     result = await agent.run()
@@ -406,31 +406,28 @@ def browser_task(task: str, url: str = None) -> str:
     return asyncio.run(_browser_task(task, url))
 ```
 
-**OpenAI tool schema**
+**Claude tool schema**
 ```python
 {
-    "type": "function",
-    "function": {
-        "name": "browser_task",
-        "description": (
-            "Control a real browser to navigate pages, click elements, fill forms, "
-            "and extract data from JavaScript-heavy or login-protected sites. "
-            "Describe the full task in natural language."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "task": {
-                    "type": "string",
-                    "description": "Natural-language instruction for the browser agent, e.g. 'Go to twitter.com and get the top 3 trending topics'"
-                },
-                "url": {
-                    "type": "string",
-                    "description": "Optional starting URL"
-                }
+    "name": "browser_task",
+    "description": (
+        "Control a real browser to navigate pages, click elements, fill forms, "
+        "and extract data from JavaScript-heavy or login-protected sites. "
+        "Describe the full task in natural language."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "task": {
+                "type": "string",
+                "description": "Natural-language instruction for the browser agent, e.g. 'Go to twitter.com and get the top 3 trending topics'"
             },
-            "required": ["task"]
-        }
+            "url": {
+                "type": "string",
+                "description": "Optional starting URL"
+            }
+        },
+        "required": ["task"]
     }
 }
 ```
@@ -482,27 +479,24 @@ def _playwright_screenshot(url: str, path: str = "screenshot.png") -> str:
     return f"Screenshot saved to {path}"
 ```
 
-**OpenAI tool schema**
+**Claude tool schema**
 ```python
 {
-    "type": "function",
-    "function": {
-        "name": "playwright_scrape",
-        "description": (
-            "Scrape a JavaScript-rendered page and return its text content. "
-            "Use when Firecrawl or plain HTTP fetching fails on SPAs or dynamic sites."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "url": {"type": "string", "description": "Page URL to scrape"},
-                "selector": {
-                    "type": "string",
-                    "description": "Optional CSS selector to target a specific element"
-                }
-            },
-            "required": ["url"]
-        }
+    "name": "playwright_scrape",
+    "description": (
+        "Scrape a JavaScript-rendered page and return its text content. "
+        "Use when Firecrawl or plain HTTP fetching fails on SPAs or dynamic sites."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "Page URL to scrape"},
+            "selector": {
+                "type": "string",
+                "description": "Optional CSS selector to target a specific element"
+            }
+        },
+        "required": ["url"]
     }
 }
 ```

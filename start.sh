@@ -35,8 +35,8 @@ pip install -q -r requirements.txt
 if [ ! -f ".env" ]; then
   echo ""
   echo "⚠️  No .env file found. Create one with:"
-  echo "    echo 'OPENAI_API_KEY=sk-...' > .env"
-  echo "    echo 'OPENAI_MODEL=gpt-4o-mini' >> .env"
+  echo "    echo 'ANTHROPIC_API_KEY=sk-ant-...' > .env"
+  echo "    echo 'ANTHROPIC_MODEL=claude-sonnet-5' >> .env"
   echo ""
 fi
 
