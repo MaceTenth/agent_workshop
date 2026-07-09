@@ -35,10 +35,10 @@ def _text(response) -> str:
 
 # ── Prompt Engineering ────────────────────────────────────────────────────────
 
-def zero_shot(question: str) -> tuple[str, dict]:
+def zero_shot(question: str, model: str = None) -> tuple[str, dict]:
     """Direct answer — no examples, no reasoning instructions."""
     response = client.messages.create(
-        model=MODEL,
+        model=model or MODEL,
         max_tokens=MAX_TOKENS,
         system="You are a helpful assistant. Answer directly and concisely.",
         messages=[
@@ -48,10 +48,10 @@ def zero_shot(question: str) -> tuple[str, dict]:
     return _text(response), _usage(response)
 
 
-def few_shot(question: str) -> tuple[str, dict]:
+def few_shot(question: str, model: str = None) -> tuple[str, dict]:
     """Provide two worked examples before asking the real question."""
     response = client.messages.create(
-        model=MODEL,
+        model=model or MODEL,
         max_tokens=MAX_TOKENS,
         system="You are a helpful assistant that follows the pattern shown in the examples.",
         messages=[
@@ -70,10 +70,10 @@ def few_shot(question: str) -> tuple[str, dict]:
     return _text(response), _usage(response)
 
 
-def chain_of_thought(question: str) -> tuple[str, dict]:
+def chain_of_thought(question: str, model: str = None) -> tuple[str, dict]:
     """Instruct the model to reason step-by-step before giving its final answer."""
     response = client.messages.create(
-        model=MODEL,
+        model=model or MODEL,
         max_tokens=MAX_TOKENS,
         system=(
             "You are a helpful assistant. Before answering, think step by step. "
@@ -88,7 +88,7 @@ def chain_of_thought(question: str) -> tuple[str, dict]:
 
 # ── Task Decomposition ────────────────────────────────────────────────────────
 
-def decompose_task(task: str) -> tuple[str, dict, list[str]]:
+def decompose_task(task: str, model: str = None) -> tuple[str, dict, list[str]]:
     """
     Ask the LLM to break a complex task into ordered subtasks.
     Returns (full_response, usage, list_of_step_strings).
@@ -104,7 +104,7 @@ def decompose_task(task: str) -> tuple[str, dict, list[str]]:
         "[Explain why you chose this breakdown and what the agent needs to keep in mind]"
     )
     response = client.messages.create(
-        model=MODEL,
+        model=model or MODEL,
         max_tokens=MAX_TOKENS,
         system=system,
         messages=[
@@ -124,7 +124,7 @@ def decompose_task(task: str) -> tuple[str, dict, list[str]]:
 
 # ── ReAct Loop ────────────────────────────────────────────────────────────────
 
-def react_loop(task: str) -> tuple[list[dict], dict]:
+def react_loop(task: str, model: str = None) -> tuple[list[dict], dict]:
     """
     Simulate a ReAct (Reason + Act) loop.
     The LLM is prompted to produce interleaved Thought / Action / Observation steps,
@@ -142,7 +142,7 @@ def react_loop(task: str) -> tuple[list[dict], dict]:
         "Be educational and concrete — this is a workshop demo showing how agents think."
     )
     response = client.messages.create(
-        model=MODEL,
+        model=model or MODEL,
         max_tokens=MAX_TOKENS,
         system=system,
         messages=[

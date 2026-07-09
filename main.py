@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -6,6 +7,25 @@ from agent_llm import run_stock_agent
 
 app = FastAPI(title="Agent Workshop")
 
+DEFAULT_MODEL = "claude-sonnet-5"
+
+# ── Per-model pricing (USD per 1M tokens: input, output) for the cost badge ───
+PRICES = {
+    "claude-sonnet-5": (3.0, 15.0),
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-haiku-4-5": (1.0, 5.0),
+}
+
+
+def _cost(usage: dict, model: str) -> float:
+    """Estimate the USD cost of a call from its token usage."""
+    in_price, out_price = PRICES.get(model or DEFAULT_MODEL, PRICES[DEFAULT_MODEL])
+    return round(
+        usage.get("prompt_tokens", 0) / 1e6 * in_price
+        + usage.get("completion_tokens", 0) / 1e6 * out_price,
+        6,
+    )
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -13,21 +33,28 @@ class ChatRequest(BaseModel):
     tools_enabled: bool = False
     web_search_enabled: bool = False
     rag_enabled: bool = False
+    model: str | None = None
 
 
 class PlanRequest(BaseModel):
     task: str
     mode: str  # zero_shot | few_shot | cot | decompose | react
+    model: str | None = None
 
 
 class AgentRequest(BaseModel):
     ticker: str
     risk_tolerance: str = "moderate"
+    model: str | None = None
 
 
 @app.post("/agent")
 async def agent(request: AgentRequest):
-    result = run_stock_agent(request.ticker, request.risk_tolerance)
+    t0 = time.perf_counter()
+    result = run_stock_agent(request.ticker, request.risk_tolerance, model=request.model)
+    result["latency_ms"] = round((time.perf_counter() - t0) * 1000)
+    result["cost_usd"] = _cost(result.get("usage", {}), request.model)
+    result["model"] = request.model or DEFAULT_MODEL
     return result
 
 
@@ -35,23 +62,31 @@ async def agent(request: AgentRequest):
 async def plan(request: PlanRequest):
     from planning_llm import zero_shot, few_shot, chain_of_thought, decompose_task, react_loop
 
+    t0 = time.perf_counter()
+    mdl = request.model
+
     if request.mode == "zero_shot":
-        content, usage = zero_shot(request.task)
-        return {"content": content, "usage": usage}
+        content, usage = zero_shot(request.task, model=mdl)
+        out = {"content": content, "usage": usage}
     elif request.mode == "few_shot":
-        content, usage = few_shot(request.task)
-        return {"content": content, "usage": usage}
+        content, usage = few_shot(request.task, model=mdl)
+        out = {"content": content, "usage": usage}
     elif request.mode == "cot":
-        content, usage = chain_of_thought(request.task)
-        return {"content": content, "usage": usage}
+        content, usage = chain_of_thought(request.task, model=mdl)
+        out = {"content": content, "usage": usage}
     elif request.mode == "decompose":
-        content, usage, steps = decompose_task(request.task)
-        return {"content": content, "usage": usage, "steps": steps}
+        content, usage, steps = decompose_task(request.task, model=mdl)
+        out = {"content": content, "usage": usage, "steps": steps}
     elif request.mode == "react":
-        steps, usage = react_loop(request.task)
-        return {"steps": steps, "usage": usage}
+        steps, usage = react_loop(request.task, model=mdl)
+        out = {"steps": steps, "usage": usage}
     else:
         return {"error": f"Unknown mode: {request.mode}"}
+
+    out["latency_ms"] = round((time.perf_counter() - t0) * 1000)
+    out["cost_usd"] = _cost(out.get("usage", {}), mdl)
+    out["model"] = mdl or DEFAULT_MODEL
+    return out
 
 
 @app.post("/chat")
@@ -60,17 +95,20 @@ async def chat(request: ChatRequest):
     tool_invocations: list[dict] = []
     search_context: str = ""
     rag_context: str = ""
+    trace: dict = {}
+    mdl = request.model
 
+    t0 = time.perf_counter()
     if request.rag_enabled:
-        response, usage, rag_context = llm_with_rag(request.message, request.history)
+        response, usage, rag_context = llm_with_rag(request.message, request.history, model=mdl, trace=trace)
     elif request.web_search_enabled:
-        response, usage, search_context = llm_with_web_search(request.message, request.history)
+        response, usage, search_context = llm_with_web_search(request.message, request.history, model=mdl, trace=trace)
     elif request.tools_enabled:
-        response, usage, tool_invocations = llm_with_tools(base)
+        response, usage, tool_invocations = llm_with_tools(base, model=mdl, trace=trace)
     elif request.history:
-        response, usage = llm_with_memory(base)
+        response, usage = llm_with_memory(base, model=mdl, trace=trace)
     else:
-        response, usage = simple_llm_call(request.message)
+        response, usage = simple_llm_call(request.message, model=mdl, trace=trace)
 
     return {
         "response": response,
@@ -78,6 +116,10 @@ async def chat(request: ChatRequest):
         "tool_calls": tool_invocations,
         "search_context": search_context,
         "rag_context": rag_context,
+        "latency_ms": round((time.perf_counter() - t0) * 1000),
+        "cost_usd": _cost(usage, mdl),
+        "model": mdl or DEFAULT_MODEL,
+        "request_preview": trace.get("preview"),
     }
 
 

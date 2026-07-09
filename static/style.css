@@ -567,3 +567,21 @@ header {
 #send-btn:hover:not(:disabled) { background: var(--accent-light); }
 #send-btn:active:not(:disabled) { transform: scale(0.95); }
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Peek under the hood (request preview) ───────────────────────── */
+.peek { margin-top: 8px; font-size: 12px; }
+.peek summary { cursor: pointer; color: var(--text-muted); user-select: none; padding: 4px 0; }
+.peek summary:hover { color: var(--text); }
+.peek-json {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+}

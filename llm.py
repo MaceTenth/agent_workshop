@@ -9,6 +9,13 @@ client = anthropic.Anthropic()
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
 MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "2048"))
 
+# Models that support the context-management betas (compaction / context
+# editing). A model outside this set (e.g. Haiku) falls back to a plain call.
+CONTEXT_MGMT_MODELS = {
+    "claude-sonnet-5", "claude-sonnet-4-6",
+    "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",
+}
+
 
 SYSTEM_PROMPT = "You are a helpful assistant."
 
@@ -33,22 +40,37 @@ def _text(response) -> str:
     return "".join(b.text for b in response.content if b.type == "text")
 
 
-def simple_llm_call(user_message: str) -> tuple[str, dict]:
+def _preview(trace, mode, model, messages, tools=None):
+    """Record the exact request payload for the 'peek under the hood' panel."""
+    if trace is not None:
+        trace["preview"] = {
+            "mode": mode,
+            "model": model,
+            "system": SYSTEM_PROMPT,
+            "messages": messages,
+            "tools": tools,
+        }
+
+
+def simple_llm_call(user_message: str, model: str = None, trace: dict = None) -> tuple[str, dict]:
     """
     A single, stateless LLM call.
     No conversation history is maintained — each call is fully independent.
     Returns (content, usage).
     """
+    mdl = model or MODEL
+    messages = [{"role": "user", "content": user_message}]
+    _preview(trace, "Stateless", mdl, messages)
     response = client.messages.create(
-        model=MODEL,
+        model=mdl,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_message}],
+        messages=messages,
     )
     return _text(response), _usage(response)
 
 
-def llm_with_memory(messages: list[dict]) -> tuple[str, dict]:
+def llm_with_memory(messages: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict]:
     """
     Stateful LLM call.
     The full conversation history is passed on every request so the model
@@ -59,18 +81,28 @@ def llm_with_memory(messages: list[dict]) -> tuple[str, dict]:
     or silently dropping them, so the conversation can keep going.
     Returns (content, usage).
     """
-    response = client.beta.messages.create(
-        betas=["compact-2026-01-12"],
-        model=MODEL,
-        max_tokens=MAX_TOKENS,
-        system=SYSTEM_PROMPT,
-        messages=messages,
-        context_management={"edits": [{"type": "compact_20260112"}]},
-    )
+    mdl = model or MODEL
+    _preview(trace, "Memory", mdl, messages)
+    if mdl in CONTEXT_MGMT_MODELS:
+        response = client.beta.messages.create(
+            betas=["compact-2026-01-12"],
+            model=mdl,
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM_PROMPT,
+            messages=messages,
+            context_management={"edits": [{"type": "compact_20260112"}]},
+        )
+    else:
+        response = client.messages.create(
+            model=mdl,
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM_PROMPT,
+            messages=messages,
+        )
     return _text(response), _usage(response)
 
 
-def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
+def llm_with_tools(messages: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, list[dict]]:
     """
     Agentic loop with Claude tool use.
     Calls the model, executes any tool calls, feeds results back, and
@@ -83,21 +115,32 @@ def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
     """
     from tools import TOOLS, execute_tool
 
+    mdl = model or MODEL
     msgs = list(messages)
+    _preview(trace, "Tools", mdl, list(messages), tools=[t["name"] for t in TOOLS])
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     invocations = []
 
     # The control loop
     while True:
-        response = client.beta.messages.create(
-            betas=["context-management-2025-06-27"],
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=msgs,
-            tools=TOOLS,
-            context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
-        )
+        if mdl in CONTEXT_MGMT_MODELS:
+            response = client.beta.messages.create(
+                betas=["context-management-2025-06-27"],
+                model=mdl,
+                max_tokens=MAX_TOKENS,
+                system=SYSTEM_PROMPT,
+                messages=msgs,
+                tools=TOOLS,
+                context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+            )
+        else:
+            response = client.messages.create(
+                model=mdl,
+                max_tokens=MAX_TOKENS,
+                system=SYSTEM_PROMPT,
+                messages=msgs,
+                tools=TOOLS,
+            )
         for k, v in _usage(response).items():
             total_usage[k] += v
 
@@ -122,7 +165,7 @@ def llm_with_tools(messages: list[dict]) -> tuple[str, dict, list[dict]]:
         msgs.append({"role": "user", "content": tool_results})
 
 
-def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str]:
+def llm_with_rag(user_message: str, history: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, str]:
     """
     Simple RAG pipeline (no embeddings):
       1. Retrieve relevant employee records via keyword matching.
@@ -132,6 +175,7 @@ def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str
     """
     from rag import retrieve, format_docs
 
+    mdl = model or MODEL
     docs = retrieve(user_message)
     context = format_docs(docs)
     augmented = (
@@ -139,8 +183,9 @@ def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str
         f"Using the above employee data, answer: {user_message}"
     )
     msgs = list(history) + [{"role": "user", "content": augmented}]
+    _preview(trace, "RAG", mdl, msgs)
     response = client.messages.create(
-        model=MODEL,
+        model=mdl,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=msgs,
@@ -148,7 +193,7 @@ def llm_with_rag(user_message: str, history: list[dict]) -> tuple[str, dict, str
     return _text(response), _usage(response), context
 
 
-def llm_with_web_search(user_message: str, history: list[dict]) -> tuple[str, dict, str]:
+def llm_with_web_search(user_message: str, history: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, str]:
     """
     Two-step web-search pipeline:
       1. Call Claude's built-in web_search server tool to get a fresh,
@@ -159,7 +204,11 @@ def llm_with_web_search(user_message: str, history: list[dict]) -> tuple[str, di
     """
     from web_search import run_web_search
 
-    # Step 1 — live web search via Claude's server-side web_search tool
+    mdl = model or MODEL
+
+    # Step 1 — live web search via Claude's server-side web_search tool.
+    # (Uses its own web-search-capable model regardless of the picker, since
+    # the web_search tool isn't available on every model, e.g. Haiku.)
     search_context = run_web_search(user_message)
 
     # Step 2 — synthesis: inject search results back into our regular LLM
@@ -168,8 +217,9 @@ def llm_with_web_search(user_message: str, history: list[dict]) -> tuple[str, di
         f"Using the above as context, answer: {user_message}"
     )
     msgs = list(history) + [{"role": "user", "content": synthesis_prompt}]
+    _preview(trace, "Web Search", mdl, msgs, tools=["web_search (server-side, step 1)"])
     response = client.messages.create(
-        model=MODEL,
+        model=mdl,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=msgs,

@@ -3,6 +3,7 @@ import os
 import anthropic
 from dotenv import load_dotenv
 from tools import TOOLS, execute_tool
+from llm import CONTEXT_MGMT_MODELS
 
 load_dotenv()
 client = anthropic.Anthropic()
@@ -53,7 +54,7 @@ def _text(response) -> str:
     return "".join(b.text for b in response.content if b.type == "text")
 
 
-def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
+def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = None) -> dict:
     """
     Full multi-step agent loop for stock analysis:
       1. PLAN    — decompose the task into sub-steps
@@ -63,6 +64,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
     """
     usage = {"prompt_tokens": 0, "completion_tokens": 0}
     ticker = ticker.upper().strip()
+    mdl = model or MODEL
 
     def _track(resp):
         usage["prompt_tokens"] += resp.usage.input_tokens
@@ -72,7 +74,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
     # ── 1. PLAN ──────────────────────────────────────────────────────────────
     plan_resp = _track(
         client.messages.create(
-            model=MODEL,
+            model=mdl,
             max_tokens=MAX_TOKENS,
             system=(
                 f"You are a financial analyst agent planner for {ticker}.\n"
@@ -123,18 +125,30 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
 
         if needs_tool:
             # Context editing clears stale tool results server-side so a
-            # long agentic run doesn't exhaust the context window.
-            r = _track(
-                client.beta.messages.create(
-                    betas=["context-management-2025-06-27"],
-                    model=MODEL,
-                    max_tokens=MAX_TOKENS,
-                    system=system_prompt,
-                    messages=msgs,
-                    tools=TOOLS,
-                    context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+            # long agentic run doesn't exhaust the context window. Only
+            # models that support the beta get it; others fall back to plain.
+            if mdl in CONTEXT_MGMT_MODELS:
+                r = _track(
+                    client.beta.messages.create(
+                        betas=["context-management-2025-06-27"],
+                        model=mdl,
+                        max_tokens=MAX_TOKENS,
+                        system=system_prompt,
+                        messages=msgs,
+                        tools=TOOLS,
+                        context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+                    )
                 )
-            )
+            else:
+                r = _track(
+                    client.messages.create(
+                        model=mdl,
+                        max_tokens=MAX_TOKENS,
+                        system=system_prompt,
+                        messages=msgs,
+                        tools=TOOLS,
+                    )
+                )
             tool_uses = [b for b in r.content if b.type == "tool_use"]
             if tool_uses:
                 msgs.append({"role": "assistant", "content": r.content})
@@ -157,7 +171,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
 
                 final = _track(
                     client.messages.create(
-                        model=MODEL,
+                        model=mdl,
                         max_tokens=MAX_TOKENS,
                         system=system_prompt,
                         messages=msgs,
@@ -169,7 +183,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
         else:
             r = _track(
                 client.messages.create(
-                    model=MODEL,
+                    model=mdl,
                     max_tokens=MAX_TOKENS,
                     system=system_prompt,
                     messages=msgs,
@@ -183,7 +197,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
     # ── 3. SYNTHESIZE ─────────────────────────────────────────────────────────
     synth_resp = _track(
         client.messages.create(
-            model=MODEL,
+            model=mdl,
             max_tokens=MAX_TOKENS,
             system=(
                 "You are a senior financial analyst. Write an investment summary "
@@ -206,7 +220,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate") -> dict:
     # ── 4. VERIFY ─────────────────────────────────────────────────────────────
     verify_resp = _track(
         client.messages.create(
-            model=MODEL,
+            model=mdl,
             max_tokens=MAX_TOKENS,
             system="You are a QA reviewer for AI-generated financial analysis.",
             messages=[

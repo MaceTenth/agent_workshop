@@ -16,6 +16,7 @@ const ctxPct      = document.getElementById('ctx-pct');
 const ctxFill     = document.getElementById('ctx-bar-fill');
 const ctxTokens   = document.getElementById('ctx-tokens');
 let emptyState    = document.getElementById('empty-state');
+const modelSelect = document.getElementById('model-select');
 
 const CTX_LIMIT = 128000; // context meter scale (Claude supports up to 1M)
 
@@ -208,6 +209,7 @@ async function sendMessage() {
       <div class="exchange-meta">
         <span class="ctx-tag ${tagClass}">${escapeHtml(tagLabel)}</span>
         <span class="tok-tag" id="tok-${currentCall}"></span>
+        <span class="tok-tag" id="meta-${currentCall}"></span>
       </div>
     </div>
     <div class="bubble user">
@@ -224,7 +226,7 @@ async function sendMessage() {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   try {
-    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn };
+    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn, model: modelSelect.value };
     console.group(`%c📤 API Call #${currentCall} — REQUEST`, 'color:#a78bfa;font-weight:bold');
     console.log('%cUser message:', 'color:#93c5fd', text);
     console.log('%cHistory sent (%d messages):', 'color:#93c5fd', historySnap.length, historySnap);
@@ -301,6 +303,26 @@ async function sendMessage() {
       const tok = document.getElementById(`tok-${currentCall}`);
       if (tok) tok.textContent = `${data.usage.prompt_tokens.toLocaleString()} prompt tok`;
       if (memoryOn || toolsOn || webSearchOn) updateCtxMeter(data.usage.prompt_tokens);
+    }
+
+    // Cost + latency + model badge
+    const meta = document.getElementById(`meta-${currentCall}`);
+    if (meta) {
+      const bits = [];
+      if (data.model) bits.push(data.model.replace('claude-', ''));
+      if (typeof data.cost_usd === 'number') bits.push('$' + data.cost_usd.toFixed(5));
+      if (typeof data.latency_ms === 'number') bits.push((data.latency_ms / 1000).toFixed(1) + 's');
+      meta.textContent = bits.join(' · ');
+    }
+
+    // Peek under the hood — the actual request payload sent to Claude
+    if (data.request_preview) {
+      const det = document.createElement('details');
+      det.className = 'peek';
+      det.innerHTML =
+        `<summary>🔍 Peek under the hood — request sent to Claude</summary>` +
+        `<pre class="peek-json">${escapeHtml(JSON.stringify(data.request_preview, null, 2))}</pre>`;
+      card.appendChild(det);
     }
 
     console.group(`%c📥 API Call #${currentCall} — RESPONSE`, 'color:#34d399;font-weight:bold');
