@@ -6,7 +6,7 @@
   <title>Agent Workshop — Frameworks</title>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/planning.css" />
-  <link rel="stylesheet" href="/frameworks.css?v=4" />
+  <link rel="stylesheet" href="/frameworks.css?v=5" />
 </head>
 <body>
 
@@ -930,41 +930,60 @@ answer = <span class="kw">await</span> agent.run(<span class="str">"Compare Q3 r
         </div>
       </div>
 
-      <div class="decision-guide">
-        <div class="decision-title">📐 Quick decision guide <span class="decision-hint">— click a framework to jump to it</span></div>
-        <table class="decision-table">
-          <thead>
-            <tr>
-              <th>You need…</th>
-              <th>Reach for…</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>150+ source &amp; tool integrations</td>            <td><span class="dt-lc dt-link" data-goto="langchain">LangChain</span></td></tr>
-            <tr><td>Prompt templates &amp; versioning</td>              <td><span class="dt-lc dt-link" data-goto="langchain">LangChain</span></td></tr>
-            <tr><td>Stateful graphs — branching, loops, human-in-loop</td> <td><span class="dt-lg dt-link" data-goto="langgraph">LangGraph</span></td></tr>
-            <tr><td>Long-running, resumable agents (checkpoints)</td>   <td><span class="dt-lg dt-link" data-goto="langgraph">LangGraph</span></td></tr>
-            <tr><td>Self-correcting / cyclic reasoning loops</td>       <td><span class="dt-lg dt-link" data-goto="langgraph">LangGraph</span></td></tr>
-            <tr><td>Team of specialised agents / task handoffs</td>     <td><span class="dt-crew dt-link" data-goto="crewai">CrewAI</span></td></tr>
-            <tr><td>Role / goal / backstory agent personas</td>        <td><span class="dt-crew dt-link" data-goto="crewai">CrewAI</span></td></tr>
-            <tr><td>Research → write → review pipeline</td>            <td><span class="dt-crew dt-link" data-goto="crewai">CrewAI</span></td></tr>
-            <tr><td>Type-safe, validated structured output</td>         <td><span class="dt-pa dt-link" data-goto="pydanticai">Pydantic AI</span></td></tr>
-            <tr><td>Extract records from text into a schema</td>        <td><span class="dt-pa dt-link" data-goto="pydanticai">Pydantic AI</span></td></tr>
-            <tr><td>Typed dependency injection into tools</td>          <td><span class="dt-pa dt-link" data-goto="pydanticai">Pydantic AI</span></td></tr>
-            <tr><td>RAG over your documents (vector search)</td>        <td><span class="dt-li dt-link" data-goto="llamaindex">LlamaIndex</span></td></tr>
-            <tr><td>Chat over your documents (with memory)</td>         <td><span class="dt-li dt-link" data-goto="llamaindex">LlamaIndex</span></td></tr>
-            <tr><td>Query across multiple knowledge bases</td>          <td><span class="dt-li dt-link" data-goto="llamaindex">LlamaIndex</span></td></tr>
-            <tr><td>Quick LLM demo / learning</td>                      <td><span class="dt-raw">Raw Python</span></td></tr>
-            <tr><td>Max control, minimal dependencies</td>              <td><span class="dt-raw">Raw Python</span></td></tr>
-            <tr><td>Throwaway prototype / one-off script</td>           <td><span class="dt-raw">Raw Python</span></td></tr>
-          </tbody>
-        </table>
+      <div class="decision-grid">
+        <div class="dg-card dg-lc" data-goto="langchain">
+          <div class="dg-card-head">🦜 LangChain <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>150+ source &amp; tool integrations</li>
+            <li>Prompt templates &amp; versioning</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-lg" data-goto="langgraph">
+          <div class="dg-card-head">🕸️ LangGraph <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>Stateful graphs — branching, loops, human-in-loop</li>
+            <li>Long-running, resumable agents (checkpoints)</li>
+            <li>Self-correcting / cyclic reasoning loops</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-crew" data-goto="crewai">
+          <div class="dg-card-head">🤝 CrewAI <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>Team of specialised agents / task handoffs</li>
+            <li>Role / goal / backstory agent personas</li>
+            <li>Research → write → review pipeline</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-pa" data-goto="pydanticai">
+          <div class="dg-card-head">🛡️ Pydantic AI <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>Type-safe, validated structured output</li>
+            <li>Extract records from text into a schema</li>
+            <li>Typed dependency injection into tools</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-li" data-goto="llamaindex">
+          <div class="dg-card-head">🦙 LlamaIndex <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>RAG over your documents (vector search)</li>
+            <li>Chat over your documents (with memory)</li>
+            <li>Query across multiple knowledge bases</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-raw">
+          <div class="dg-card-head">⚙️ Raw Python</div>
+          <ul class="dg-cases">
+            <li>Quick LLM demo / learning</li>
+            <li>Max control, minimal dependencies</li>
+            <li>Throwaway prototype / one-off script</li>
+          </ul>
+        </div>
       </div>
 
     </section>
 
   </main>
 
-  <script src="/frameworks.js?v=2"></script>
+  <script src="/frameworks.js?v=3"></script>
 </body>
 </html>

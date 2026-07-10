@@ -29,8 +29,8 @@ document.querySelectorAll('.fw-back-btn').forEach(btn => {
   btn.addEventListener('click', showTOC);
 });
 
-// Decision-guide badges jump to their framework's section
-document.querySelectorAll('.decision-table [data-goto]').forEach(el => {
+// Decision-guide cards jump to their framework's section
+document.querySelectorAll('[data-goto]').forEach(el => {
   el.addEventListener('click', () => showScreen(el.dataset.goto));
 });
 
