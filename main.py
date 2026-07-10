@@ -7,6 +7,15 @@ from agent_llm import run_stock_agent
 
 app = FastAPI(title="Agent Workshop")
 
+
+@app.middleware("http")
+async def no_cache(request, call_next):
+    """Serve fresh files during the workshop — no stale browser cache."""
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 DEFAULT_MODEL = "claude-sonnet-5"
 
 # ── Per-model pricing (USD per 1M tokens: input, output) for the cost badge ───
