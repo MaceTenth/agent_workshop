@@ -205,11 +205,16 @@ toolsToggle.addEventListener('change', () => {
   const on = toolsToggle.checked;
   toolsStatus.textContent = on ? 'ON' : 'OFF';
   toolsStatus.className   = 'cap-status ' + (on ? 'on' : 'off');
-  // Tools and Web Search are mutually exclusive
+  // Tools is mutually exclusive with Web Search and RAG (outside agent mode)
   if (!agentToggle.checked && on && webSearchToggle.checked) {
     webSearchToggle.checked = false;
     webSearchStatus.textContent = 'OFF';
     webSearchStatus.className   = 'cap-status off';
+  }
+  if (!agentToggle.checked && on && ragToggle.checked) {
+    ragToggle.checked = false;
+    ragStatus.textContent = 'OFF';
+    ragStatus.className   = 'cap-status off';
   }
   updateUI();
 });
