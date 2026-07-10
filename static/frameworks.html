@@ -15,7 +15,7 @@
     <a href="/agent.html" class="back-link">← Agent</a>
     <div class="header-icon" style="background:#7c3aed">🔗</div>
     <div class="header-titles">
-      <h1>Frameworks: LangChain, CrewAI, LangGraph &amp; Pydantic AI</h1>
+      <h1>Frameworks: LangChain, CrewAI, LangGraph, Pydantic AI &amp; LlamaIndex</h1>
       <p>Why abstractions matter — and what they solve</p>
     </div>
   </header>
@@ -65,6 +65,15 @@
         <div class="fw-toc-body">
           <div class="fw-toc-title">Pydantic AI</div>
           <div class="fw-toc-desc">Type-safe agents — validated structured output, tools from typed functions, and injected dependencies.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="llamaindex">
+        <div class="fw-toc-icon">🦙</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">LlamaIndex</div>
+          <div class="fw-toc-desc">RAG over your data — chunking, embedding, indexing, and retrieval in a few lines, plus data agents.</div>
         </div>
         <div class="fw-toc-arrow">→</div>
       </button>
@@ -721,6 +730,93 @@ agent = Agent(<span class="str">"anthropic:claude-sonnet-5"</span>, deps_type=We
 <span class="cm"># Schema is generated from the signature + docstring; the tool</span>
 <span class="cm"># loop, arg validation, and result feedback are all automatic.</span>
 result = agent.run_sync(<span class="str">"What's the weather in Paris?"</span>, deps=client)</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 4: Tradeoffs                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: LlamaIndex                                -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-llamaindex">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">LlamaIndex — RAG over your data</div>
+        <div class="lesson-desc">
+          LlamaIndex is the <strong>data framework</strong> for LLM apps: point it at your documents and it
+          handles <strong>chunking, embedding, indexing, and retrieval</strong>, then answers questions grounded
+          in your data. What the workshop's RAG module does by hand — retrieve → augment → generate — LlamaIndex
+          does in a few lines, with real vector search.
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="li-rag">RAG Pipeline</button>
+        <button class="ex-btn" data-ex="li-agent">Data Agent</button>
+      </div>
+
+      <!-- RAG Pipeline -->
+      <div class="code-compare active" id="ex-li-rag">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># You wire up every step of RAG yourself</span>
+docs   = load_files(<span class="str">"./data"</span>)                      <span class="cm"># read + parse</span>
+chunks = [c <span class="kw">for</span> d <span class="kw">in</span> docs <span class="kw">for</span> c <span class="kw">in</span> split(d, 500)]  <span class="cm"># chunk</span>
+store  = FaissIndex([embed(c) <span class="kw">for</span> c <span class="kw">in</span> chunks])       <span class="cm"># embed + store</span>
+
+<span class="kw">def</span> <span class="fn">answer</span>(question):
+    hits    = store.search(embed(question), top_k=3)   <span class="cm"># retrieve</span>
+    context = <span class="str">"\n"</span>.join(chunks[i] <span class="kw">for</span> i <span class="kw">in</span> hits)     <span class="cm"># stuff</span>
+    <span class="kw">return</span> simple_llm_call(<span class="str">f"Context:\n</span><span class="interp">{context}</span><span class="str">\n\nQ: </span><span class="interp">{question}</span><span class="str">"</span>)
+<span class="cm"># You own chunking, embeddings, storage, retrieval, and the prompt</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LlamaIndex</div>
+          <pre class="code-block"><span class="kw">from</span> llama_index.core <span class="kw">import</span> VectorStoreIndex, SimpleDirectoryReader, Settings
+<span class="kw">from</span> llama_index.llms.anthropic <span class="kw">import</span> Anthropic
+
+Settings.llm = Anthropic(model=<span class="str">"claude-sonnet-5"</span>)
+
+docs  = SimpleDirectoryReader(<span class="str">"./data"</span>).load_data()   <span class="cm"># read + parse</span>
+index = VectorStoreIndex.from_documents(docs)          <span class="cm"># chunk + embed + store</span>
+query = index.as_query_engine(similarity_top_k=3)      <span class="cm"># retrieval + prompt built in</span>
+
+answer = query.query(<span class="str">"What were Q3 revenues?"</span>)
+<span class="cm"># Chunking, embeddings, the vector store, retrieval, and the</span>
+<span class="cm"># grounded prompt are all handled — swap the store or top_k with one arg</span></pre>
+        </div>
+      </div>
+
+      <!-- Data Agent -->
+      <div class="code-compare" id="ex-li-agent">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># To let the model DECIDE when to search your docs, you</span>
+<span class="cm"># hand-build a tool + the whole agent loop around your RAG</span>
+<span class="kw">def</span> <span class="fn">search_docs</span>(query):
+    <span class="kw">return</span> retrieve_and_stuff(query)   <span class="cm"># your RAG from above</span>
+
+TOOLS = [{<span class="str">"name"</span>: <span class="str">"search_docs"</span>, <span class="str">"input_schema"</span>: {...}}]
+<span class="cm"># ...then the manual while-loop: call, run tool, feed back, repeat.</span>
+<span class="cm"># Reasoning across multiple indexes? That's all on you.</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LlamaIndex</div>
+          <pre class="code-block"><span class="kw">from</span> llama_index.core.tools <span class="kw">import</span> QueryEngineTool
+<span class="kw">from</span> llama_index.core.agent.workflow <span class="kw">import</span> ReActAgent
+
+<span class="cm"># Wrap any index as a tool the agent can choose to call</span>
+reports = QueryEngineTool.from_defaults(
+    query_engine=index.as_query_engine(),
+    name=<span class="str">"financial_reports"</span>,
+    description=<span class="str">"Answers questions about the company's filings."</span>,
+)
+
+agent  = ReActAgent(tools=[reports], llm=Anthropic(model=<span class="str">"claude-sonnet-5"</span>))
+answer = <span class="kw">await</span> agent.run(<span class="str">"Compare Q3 revenue to the same quarter last year."</span>)
+<span class="cm"># The agent reasons, calls the right index, and loops — no glue code.</span></pre>
         </div>
       </div>
     </section>
