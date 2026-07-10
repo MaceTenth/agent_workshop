@@ -653,3 +653,7 @@ header {
   top: 34px;
   right: 10px;
 }
+
+/* Hide the banner ⚡ text in Agent mode (the step badge already lists the caps) */
+#mode-banner.agent-collapsed .icon,
+#mode-banner.agent-collapsed #mode-text { display: none; }

@@ -140,15 +140,10 @@ function updateUI() {
     if (mem)       badgeCaps.push('MEMORY');
     stepBadge.textContent = badgeCaps.length ? 'AGENT · ' + badgeCaps.join(' + ') : 'AGENT MODE';
     stepBadge.className    = 'step-badge tools';
-    banner.className       = 'tools';
-    const caps = [];
-    if (tools)     caps.push('<code>tools</code>');
-    if (webSearch) caps.push('<code>web_search</code>');
-    if (rag)       caps.push('RAG');
-    if (mem)       caps.push('memory');
-    modeText.innerHTML = caps.length
-      ? `<strong>Agent mode:</strong> the model can use ${caps.join(' + ')} together in a single agentic loop.`
-      : '<strong>Agent mode:</strong> switch on capabilities above and the model will compose them in one loop.';
+    // The badge already lists the composed capabilities, so hide the banner
+    // text in agent mode (the Clear button in the same bar stays).
+    banner.className       = 'tools agent-collapsed';
+    modeText.innerHTML     = '';
     return;
   }
 
