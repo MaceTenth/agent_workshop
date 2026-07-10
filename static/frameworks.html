@@ -15,7 +15,7 @@
     <a href="/agent.html" class="back-link">← Agent</a>
     <div class="header-icon" style="background:#7c3aed">🔗</div>
     <div class="header-titles">
-      <h1>Frameworks: LangChain &amp; CrewAI</h1>
+      <h1>Frameworks: LangChain, CrewAI, LangGraph &amp; Pydantic AI</h1>
       <p>Why abstractions matter — and what they solve</p>
     </div>
   </header>
@@ -47,6 +47,24 @@
         <div class="fw-toc-body">
           <div class="fw-toc-title">CrewAI</div>
           <div class="fw-toc-desc">Role-based multi-agent teams — Agents, Tasks, and Crews with automatic context handoff.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="langgraph">
+        <div class="fw-toc-icon">🕸️</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">LangGraph</div>
+          <div class="fw-toc-desc">Agents as state graphs — nodes, edges, and shared state give you loops, branching, and persistence for free.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="pydanticai">
+        <div class="fw-toc-icon">🛡️</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">Pydantic AI</div>
+          <div class="fw-toc-desc">Type-safe agents — validated structured output, tools from typed functions, and injected dependencies.</div>
         </div>
         <div class="fw-toc-arrow">→</div>
       </button>
@@ -525,6 +543,186 @@ review_task = Task(
         </div>
       </div>
 
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 4: Tradeoffs                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: LangGraph                                 -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-langgraph">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">LangGraph — agents as state graphs</div>
+        <div class="lesson-desc">
+          LangGraph models an agent as a <strong>graph</strong>: <strong>nodes</strong> do the work,
+          <strong>edges</strong> decide what runs next, and a shared <strong>state</strong> flows through.
+          You get loops, branching, persistence, and human-in-the-loop for free — the control flow you'd
+          otherwise hand-roll with <code>while</code> loops and <code>if</code> statements.
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="lg-graph">State Graph</button>
+        <button class="ex-btn" data-ex="lg-branch">Conditional Routing</button>
+      </div>
+
+      <!-- State Graph -->
+      <div class="code-compare active" id="ex-lg-graph">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># Hand-roll the loop: call, check for tools, run, feed back, repeat</span>
+messages = [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: task}]
+<span class="kw">while</span> <span class="kw">True</span>:
+    resp = client.messages.create(model=MODEL, messages=messages, tools=TOOLS)
+    <span class="kw">if</span> resp.stop_reason != <span class="str">"tool_use"</span>:
+        <span class="kw">break</span>
+    messages.append({<span class="str">"role"</span>: <span class="str">"assistant"</span>, <span class="str">"content"</span>: resp.content})
+    results = [run_tool(b) <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="str">"tool_use"</span>]
+    messages.append({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: results})
+<span class="cm"># No persistence, no branching, no pause &amp; resume</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangGraph</div>
+          <pre class="code-block"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+<span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
+
+llm = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>).bind_tools(tools)
+
+<span class="kw">def</span> <span class="fn">call_model</span>(state):
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [llm.invoke(state[<span class="str">"messages"</span>])]}
+
+graph = StateGraph(State)
+graph.add_node(<span class="str">"model"</span>, call_model)
+graph.add_node(<span class="str">"tools"</span>, ToolNode(tools))
+graph.add_edge(START, <span class="str">"model"</span>)
+graph.add_conditional_edges(<span class="str">"model"</span>, tools_condition)  <span class="cm"># → tools or END</span>
+graph.add_edge(<span class="str">"tools"</span>, <span class="str">"model"</span>)                        <span class="cm"># loop back</span>
+app = graph.compile(checkpointer=MemorySaver())         <span class="cm"># persistence, free</span>
+result = app.invoke({<span class="str">"messages"</span>: [(<span class="str">"user"</span>, task)]})</pre>
+        </div>
+      </div>
+
+      <!-- Conditional Routing -->
+      <div class="code-compare" id="ex-lg-branch">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># Branching logic tangled into if/elif inside your loop</span>
+intent = classify(user_msg)
+<span class="kw">if</span> <span class="str">"refund"</span> <span class="kw">in</span> intent:
+    handle_refund(user_msg)      <span class="cm"># a separate code path</span>
+<span class="kw">elif</span> <span class="str">"status"</span> <span class="kw">in</span> intent:
+    check_status(user_msg)
+<span class="kw">else</span>:
+    fallback(user_msg)
+<span class="cm"># Adding a branch means editing the loop — no shared</span>
+<span class="cm"># state, no diagram, no resume-from-here</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangGraph</div>
+          <pre class="code-block"><span class="kw">def</span> <span class="fn">route</span>(state) -> <span class="ty">str</span>:
+    intent = state[<span class="str">"intent"</span>]
+    <span class="kw">return</span> intent <span class="kw">if</span> intent <span class="kw">in</span> (<span class="str">"refund"</span>, <span class="str">"status"</span>) <span class="kw">else</span> <span class="str">"fallback"</span>
+
+graph.add_conditional_edges(
+    <span class="str">"classify"</span>,
+    route,                        <span class="cm"># returns the next node's name</span>
+    {<span class="str">"refund"</span>: <span class="str">"refund_node"</span>,
+     <span class="str">"status"</span>: <span class="str">"status_node"</span>,
+     <span class="str">"fallback"</span>: <span class="str">"fallback_node"</span>},
+)
+<span class="cm"># Each branch is a node. The graph is declarative, can be</span>
+<span class="cm"># drawn — app.get_graph().draw_mermaid() — and resumed mid-run.</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: Pydantic AI                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-pydanticai">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">Pydantic AI — type-safe agents</div>
+        <div class="lesson-desc">
+          Pydantic AI brings the <strong>Pydantic</strong> validation you already use to agents:
+          declare a <strong>typed output</strong> and the response is parsed and validated into a real
+          object, register <strong>tools</strong> as plain typed functions, and inject typed
+          <strong>dependencies</strong>. It's model-agnostic — the same agent runs on Claude.
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="pa-typed">Typed Output</button>
+        <button class="ex-btn" data-ex="pa-tools">Tools &amp; Deps</button>
+      </div>
+
+      <!-- Typed Output -->
+      <div class="code-compare active" id="ex-pa-typed">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="kw">import</span> json
+<span class="cm"># Ask for JSON, then hope, strip, parse, and validate by hand</span>
+prompt = <span class="str">f"Extract name and age from: </span><span class="interp">{text}</span><span class="str">\nReturn JSON only."</span>
+raw = simple_llm_call(prompt)
+raw = raw.strip(<span class="str">"`"</span>).lstrip(<span class="str">"json"</span>).strip()   <span class="cm"># strip markdown fences</span>
+<span class="kw">try</span>:
+    data = json.loads(raw)                     <span class="cm"># might throw</span>
+    name, age = data[<span class="str">"name"</span>], <span class="ty">int</span>(data[<span class="str">"age"</span>])  <span class="cm"># KeyError? ValueError?</span>
+<span class="kw">except</span> Exception:
+    ...  <span class="cm"># now what?</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With Pydantic AI</div>
+          <pre class="code-block"><span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+<span class="kw">from</span> pydantic_ai <span class="kw">import</span> Agent
+
+<span class="kw">class</span> <span class="ty">Person</span>(BaseModel):
+    name: <span class="ty">str</span>
+    age:  <span class="ty">int</span>
+
+agent = Agent(<span class="str">"anthropic:claude-sonnet-5"</span>, output_type=Person)
+
+result = agent.run_sync(<span class="str">f"Extract the person from: </span><span class="interp">{text}</span><span class="str">"</span>)
+person = result.output          <span class="cm"># ← a validated Person, guaranteed</span>
+<span class="fn">print</span>(person.name, person.age)  <span class="cm"># typed attributes, zero parsing</span></pre>
+        </div>
+      </div>
+
+      <!-- Tools & Deps -->
+      <div class="code-compare" id="ex-pa-tools">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># A tool = hand-written JSON schema + a dispatch fn + arg parsing</span>
+TOOLS = [{<span class="str">"name"</span>: <span class="str">"get_weather"</span>,
+          <span class="str">"input_schema"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>,
+              <span class="str">"properties"</span>: {<span class="str">"city"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>}},
+              <span class="str">"required"</span>: [<span class="str">"city"</span>]}}]
+
+<span class="kw">def</span> <span class="fn">dispatch</span>(name, args):
+    <span class="kw">if</span> name == <span class="str">"get_weather"</span>:
+        <span class="kw">return</span> weather_api(args[<span class="str">"city"</span>])   <span class="cm"># you validate args yourself</span>
+<span class="cm"># ...plus the whole while-loop to feed results back</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With Pydantic AI</div>
+          <pre class="code-block"><span class="kw">from</span> pydantic_ai <span class="kw">import</span> Agent, RunContext
+
+agent = Agent(<span class="str">"anthropic:claude-sonnet-5"</span>, deps_type=WeatherClient)
+
+<span class="dec">@agent.tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(ctx: RunContext[WeatherClient], city: <span class="ty">str</span>) -> <span class="ty">str</span>:
+    <span class="str">"Get the current weather for a city."</span>
+    <span class="kw">return</span> ctx.deps.lookup(city)     <span class="cm"># typed deps injected</span>
+
+<span class="cm"># Schema is generated from the signature + docstring; the tool</span>
+<span class="cm"># loop, arg validation, and result feedback are all automatic.</span>
+result = agent.run_sync(<span class="str">"What's the weather in Paris?"</span>, deps=client)</pre>
+        </div>
+      </div>
     </section>
 
     <!-- ─────────────────────────────────────────────────── -->
