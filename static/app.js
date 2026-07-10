@@ -63,7 +63,7 @@ function updateUI() {
     if (mem)       caps.push('memory');
     modeText.innerHTML = caps.length
       ? `<strong>Agent mode:</strong> the model can use ${caps.join(' + ')} together in a single agentic loop.`
-      : '<strong>Agent mode:</strong> switch on capabilities below and the model will compose them in one loop.';
+      : '<strong>Agent mode:</strong> switch on capabilities above and the model will compose them in one loop.';
     return;
   }
 
