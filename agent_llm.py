@@ -54,13 +54,15 @@ def _text(response) -> str:
     return "".join(b.text for b in response.content if b.type == "text")
 
 
-def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = None) -> dict:
+def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = None, emit=None) -> dict:
     """
     Full multi-step agent loop for stock analysis:
       1. PLAN    — decompose the task into sub-steps
       2. EXECUTE — run each step (some use tools, some are pure LLM)
       3. SYNTHESIZE — combine findings into an investment summary
       4. VERIFY  — self-reflect on completeness and confidence
+
+    Pass `emit(event: dict)` to receive live progress as each phase completes.
     """
     usage = {"prompt_tokens": 0, "completion_tokens": 0}
     ticker = ticker.upper().strip()
@@ -71,7 +73,12 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         usage["completion_tokens"] += resp.usage.output_tokens
         return resp
 
+    def _emit(ev):
+        if emit:
+            emit(ev)
+
     # ── 1. PLAN ──────────────────────────────────────────────────────────────
+    _emit({"phase": "plan", "status": "running"})
     plan_resp = _track(
         client.messages.create(
             model=mdl,
@@ -98,12 +105,16 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         )
     )
     tasks = json.loads(_text(plan_resp)).get("tasks", [])
+    _emit({"phase": "plan", "status": "done", "total": len(tasks),
+           "tasks": [t["description"] for t in tasks]})
 
     # ── 2. EXECUTE ───────────────────────────────────────────────────────────
     steps = []
     context = ""
 
-    for task in tasks:
+    for idx, task in enumerate(tasks):
+        _emit({"phase": "exec", "status": "running", "step": idx + 1,
+               "total": len(tasks), "task": task["description"]})
         step = {
             "task": task["description"],
             "tool_used": None,
@@ -193,8 +204,11 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
 
         context += f"\n\n## {task['description']}\n{step['result']}"
         steps.append(step)
+        _emit({"phase": "exec", "status": "done", "step": idx + 1,
+               "total": len(tasks), "task": step["task"], "tool_used": step["tool_used"]})
 
     # ── 3. SYNTHESIZE ─────────────────────────────────────────────────────────
+    _emit({"phase": "synthesize", "status": "running"})
     synth_resp = _track(
         client.messages.create(
             model=mdl,
@@ -216,8 +230,10 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         )
     )
     synthesis = _text(synth_resp)
+    _emit({"phase": "synthesize", "status": "done"})
 
     # ── 4. VERIFY ─────────────────────────────────────────────────────────────
+    _emit({"phase": "verify", "status": "running"})
     verify_resp = _track(
         client.messages.create(
             model=mdl,
@@ -236,6 +252,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         verification = json.loads(_text(verify_resp))
     except Exception:
         verification = {"completeness": "medium", "confidence": 0.7, "caveats": [], "passed": True}
+    _emit({"phase": "verify", "status": "done"})
 
     return {
         "ticker": ticker,

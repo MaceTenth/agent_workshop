@@ -1,4 +1,6 @@
 import time
+import uuid
+import threading
 import anthropic
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -28,15 +30,22 @@ _FRIENDLY_ERRORS = {
 }
 
 
-@app.exception_handler(anthropic.APIError)
-async def anthropic_error_handler(request, exc):
+def _friendly_error(exc: Exception) -> str:
     if isinstance(exc, anthropic.APIConnectionError):
-        return JSONResponse(status_code=503, content={"error": "Couldn't reach Claude — check your connection and retry."})
+        return "Couldn't reach Claude — check your connection and retry."
     status = getattr(exc, "status_code", None)
     if isinstance(status, int):
-        message = _FRIENDLY_ERRORS.get(status, f"Claude API error ({status}). Please try again.")
-        return JSONResponse(status_code=status, content={"error": message})
-    return JSONResponse(status_code=502, content={"error": "Something went wrong talking to Claude. Please try again."})
+        return _FRIENDLY_ERRORS.get(status, f"Claude API error ({status}). Please try again.")
+    if isinstance(exc, anthropic.APIError):
+        return "Something went wrong talking to Claude. Please try again."
+    return "Something went wrong. Please try again."
+
+
+@app.exception_handler(anthropic.APIError)
+async def anthropic_error_handler(request, exc):
+    status = getattr(exc, "status_code", None)
+    code = status if isinstance(status, int) else (503 if isinstance(exc, anthropic.APIConnectionError) else 502)
+    return JSONResponse(status_code=code, content={"error": _friendly_error(exc)})
 
 
 DEFAULT_MODEL = "claude-sonnet-5"
@@ -89,6 +98,45 @@ def agent(request: AgentRequest):
     result["cost_usd"] = _cost(result.get("usage", {}), request.model)
     result["model"] = request.model or DEFAULT_MODEL
     return result
+
+
+# ── Live agent runs: start in a background thread, poll for progress ──────────
+AGENT_JOBS: dict = {}
+
+
+@app.post("/agent/start")
+def agent_start(request: AgentRequest):
+    job_id = uuid.uuid4().hex
+    job = {"progress": [], "done": False, "result": None, "error": None}
+    AGENT_JOBS[job_id] = job
+
+    def worker():
+        t0 = time.perf_counter()
+        try:
+            result = run_stock_agent(
+                request.ticker, request.risk_tolerance, model=request.model,
+                emit=lambda ev: job["progress"].append(ev),
+            )
+            result["latency_ms"] = round((time.perf_counter() - t0) * 1000)
+            result["cost_usd"] = _cost(result.get("usage", {}), request.model)
+            result["model"] = request.model or DEFAULT_MODEL
+            job["result"] = result
+        except Exception as exc:  # noqa: BLE001 — surface a friendly message
+            job["error"] = _friendly_error(exc)
+        finally:
+            job["done"] = True
+
+    threading.Thread(target=worker, daemon=True).start()
+    return {"job_id": job_id}
+
+
+@app.get("/agent/status/{job_id}")
+def agent_status(job_id: str):
+    job = AGENT_JOBS.get(job_id)
+    if job is None:
+        return JSONResponse(status_code=404, content={"error": "Unknown or expired job."})
+    return {"progress": job["progress"], "done": job["done"],
+            "result": job["result"], "error": job["error"]}
 
 
 @app.post("/plan")
