@@ -349,3 +349,10 @@
 .dt-raw  { background: var(--orange-bg); color: var(--orange);  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
 .dt-lc   { background: #1a2e1a;          color: #86efac;         font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
 .dt-crew { background: var(--purple-bg); color: var(--purple);  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.dt-lg   { background: #0f2926;          color: #2dd4bf;         font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.dt-pa   { background: #172554;          color: #93c5fd;         font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.dt-li   { background: #2f2208;          color: #fbbf24;         font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+
+.dt-link { cursor: pointer; transition: filter 0.15s; }
+.dt-link:hover { filter: brightness(1.25); text-decoration: underline; }
+.decision-hint { font-size: 11px; font-weight: 400; color: var(--text-muted, #8b90b0); }
