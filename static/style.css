@@ -611,3 +611,45 @@ header {
   background: rgba(139, 92, 246, 0.08);
 }
 .elapsed-timer { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Clear-conversation button ────────────────────────────────────── */
+#clear-btn {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  opacity: 0.75;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+#clear-btn:hover { opacity: 1; }
+
+/* ── Copy buttons (answer + peek JSON) ────────────────────────────── */
+.bubble.ai { position: relative; }
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface, #1a1a24);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+.bubble.ai:hover .copy-btn { opacity: 0.85; }
+.copy-btn:hover { color: var(--text); border-color: var(--accent); opacity: 1; }
+.peek { position: relative; }
+.peek-copy {
+  position: absolute;
+  top: 34px;
+  right: 10px;
+}

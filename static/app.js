@@ -59,6 +59,36 @@ function addSessionCost(cost) {
   sessionCost += (typeof cost === 'number' ? cost : 0);
   sessionCostEl.textContent = `$${sessionCost.toFixed(5)} · ${sessionCalls} call${sessionCalls !== 1 ? 's' : ''}`;
 }
+
+// A small "Copy" button that copies getText() to the clipboard
+function makeCopyBtn(getText, label) {
+  const b = document.createElement('button');
+  b.className = 'copy-btn';
+  b.textContent = label;
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(getText()).then(() => {
+      b.textContent = 'Copied!';
+      setTimeout(() => { b.textContent = label; }, 1200);
+    });
+  });
+  return b;
+}
+
+// Clear the conversation without a full page refresh
+const clearBtn = document.getElementById('clear-btn');
+const EMPTY_STATE_HTML =
+  '<div id="empty-state"><div class="big-icon">💬</div>' +
+  '<p>Send a message to make a stateless LLM call.<br/>Toggle Memory in the sidebar to see the difference.</p></div>';
+
+clearBtn.addEventListener('click', () => {
+  history = [];
+  callCount = 0;
+  chatEl.innerHTML = EMPTY_STATE_HTML;
+  emptyState = document.getElementById('empty-state');
+  resetCtxMeter();
+  inputEl.focus();
+});
 const banner          = document.getElementById('mode-banner');
 const modeText    = document.getElementById('mode-text');
 const stepBadge   = document.getElementById('step-badge');
@@ -413,6 +443,7 @@ async function sendMessage() {
     }
 
     document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).innerHTML = marked.parse(data.response);
+    document.getElementById(`ai-bubble-${currentCall}`).appendChild(makeCopyBtn(() => data.response, 'Copy'));
 
     // Show token usage on the card header
     if (data.usage) {
@@ -438,6 +469,9 @@ async function sendMessage() {
       det.innerHTML =
         `<summary>🔍 Peek under the hood — request sent to Claude</summary>` +
         `<pre class="peek-json">${escapeHtml(JSON.stringify(data.request_preview, null, 2))}</pre>`;
+      const pk = makeCopyBtn(() => JSON.stringify(data.request_preview, null, 2), 'Copy JSON');
+      pk.classList.add('peek-copy');
+      det.appendChild(pk);
       card.appendChild(det);
     }
 

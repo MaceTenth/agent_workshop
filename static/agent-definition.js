@@ -28,8 +28,11 @@ const agentOutcome = document.getElementById('agent-outcome');
 
 let isRunning = false;
 
+// Global speed factor — lower = faster simulation (~0.45 ≈ 4-5s total)
+const SPEED = 0.45;
+
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms * SPEED));
 }
 
 function appendLog(element, text) {
@@ -42,6 +45,7 @@ function appendLog(element, text) {
 
 // Particle Animation Logic along SVG Path
 function animateParticle(particle, pathNode, duration) {
+  duration = duration * SPEED;
   return new Promise(resolve => {
     particle.classList.remove('hidden');
     const pathLength = pathNode.getTotalLength();
