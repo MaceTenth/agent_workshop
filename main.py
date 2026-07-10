@@ -2,7 +2,7 @@ import time
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search, llm_with_rag
+from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search, llm_with_rag, llm_agent
 from agent_llm import run_stock_agent
 
 app = FastAPI(title="Agent Workshop")
@@ -33,6 +33,7 @@ class ChatRequest(BaseModel):
     tools_enabled: bool = False
     web_search_enabled: bool = False
     rag_enabled: bool = False
+    agent_mode: bool = False
     model: str | None = None
 
 
@@ -99,7 +100,15 @@ async def chat(request: ChatRequest):
     mdl = request.model
 
     t0 = time.perf_counter()
-    if request.rag_enabled:
+    if request.agent_mode:
+        response, usage, tool_invocations, rag_context = llm_agent(
+            request.message, request.history,
+            tools_enabled=request.tools_enabled,
+            web_search_enabled=request.web_search_enabled,
+            rag_enabled=request.rag_enabled,
+            model=mdl, trace=trace,
+        )
+    elif request.rag_enabled:
         response, usage, rag_context = llm_with_rag(request.message, request.history, model=mdl, trace=trace)
     elif request.web_search_enabled:
         response, usage, search_context = llm_with_web_search(request.message, request.history, model=mdl, trace=trace)

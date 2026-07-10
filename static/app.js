@@ -9,6 +9,8 @@ const webSearchToggle = document.getElementById('websearch-toggle');
 const webSearchStatus = document.getElementById('websearch-status');
 const ragToggle       = document.getElementById('rag-toggle');
 const ragStatus       = document.getElementById('rag-status');
+const agentToggle     = document.getElementById('agent-toggle');
+const agentStatus     = document.getElementById('agent-status');
 const banner          = document.getElementById('mode-banner');
 const modeText    = document.getElementById('mode-text');
 const stepBadge   = document.getElementById('step-badge');
@@ -48,6 +50,22 @@ function updateUI() {
   const tools     = toolsToggle.checked;
   const webSearch = webSearchToggle.checked;
   const rag       = ragToggle.checked;
+
+  // Agent mode takes priority — capabilities compose instead of being exclusive
+  if (agentToggle.checked) {
+    stepBadge.textContent = 'AGENT MODE';
+    stepBadge.className    = 'step-badge tools';
+    banner.className       = 'tools';
+    const caps = [];
+    if (tools)     caps.push('<code>tools</code>');
+    if (webSearch) caps.push('<code>web_search</code>');
+    if (rag)       caps.push('RAG');
+    if (mem)       caps.push('memory');
+    modeText.innerHTML = caps.length
+      ? `<strong>Agent mode:</strong> the model can use ${caps.join(' + ')} together in a single agentic loop.`
+      : '<strong>Agent mode:</strong> switch on capabilities below and the model will compose them in one loop.';
+    return;
+  }
 
   // Step badge
   if (rag) {
@@ -108,7 +126,7 @@ toolsToggle.addEventListener('change', () => {
   toolsStatus.textContent = on ? 'ON' : 'OFF';
   toolsStatus.className   = 'cap-status ' + (on ? 'on' : 'off');
   // Tools and Web Search are mutually exclusive
-  if (on && webSearchToggle.checked) {
+  if (!agentToggle.checked && on && webSearchToggle.checked) {
     webSearchToggle.checked = false;
     webSearchStatus.textContent = 'OFF';
     webSearchStatus.className   = 'cap-status off';
@@ -122,13 +140,13 @@ webSearchToggle.addEventListener('change', () => {
   webSearchStatus.textContent = on ? 'ON' : 'OFF';
   webSearchStatus.className   = 'cap-status ' + (on ? 'on' : 'off');
   // Tools and Web Search are mutually exclusive
-  if (on && toolsToggle.checked) {
+  if (!agentToggle.checked && on && toolsToggle.checked) {
     toolsToggle.checked = false;
     toolsStatus.textContent = 'OFF';
     toolsStatus.className   = 'cap-status off';
   }
   // Web Search and RAG are mutually exclusive
-  if (on && ragToggle.checked) {
+  if (!agentToggle.checked && on && ragToggle.checked) {
     ragToggle.checked = false;
     ragStatus.textContent = 'OFF';
     ragStatus.className   = 'cap-status off';
@@ -142,16 +160,47 @@ ragToggle.addEventListener('change', () => {
   ragStatus.textContent = on ? 'ON' : 'OFF';
   ragStatus.className   = 'cap-status ' + (on ? 'on' : 'off');
   // RAG is mutually exclusive with Tools and Web Search
-  if (on && toolsToggle.checked) {
+  if (!agentToggle.checked && on && toolsToggle.checked) {
     toolsToggle.checked = false;
     toolsStatus.textContent = 'OFF';
     toolsStatus.className   = 'cap-status off';
   }
-  if (on && webSearchToggle.checked) {
+  if (!agentToggle.checked && on && webSearchToggle.checked) {
     webSearchToggle.checked = false;
     webSearchStatus.textContent = 'OFF';
     webSearchStatus.className   = 'cap-status off';
   }
+  updateUI();
+});
+
+// ── Agent mode toggle (master switch) ──────────────
+function syncCapStatuses() {
+  toolsStatus.textContent = toolsToggle.checked ? 'ON' : 'OFF';
+  toolsStatus.className    = 'cap-status ' + (toolsToggle.checked ? 'on' : 'off');
+  webSearchStatus.textContent = webSearchToggle.checked ? 'ON' : 'OFF';
+  webSearchStatus.className    = 'cap-status ' + (webSearchToggle.checked ? 'on' : 'off');
+  ragStatus.textContent = ragToggle.checked ? 'ON' : 'OFF';
+  ragStatus.className    = 'cap-status ' + (ragToggle.checked ? 'on' : 'off');
+}
+
+// When leaving agent mode, collapse back to one exclusive capability
+// (priority: RAG > Web Search > Tools) so the isolated modes stay valid.
+function enforceExclusive() {
+  let kept = false;
+  for (const t of [ragToggle, webSearchToggle, toolsToggle]) {
+    if (t.checked) {
+      if (kept) t.checked = false;
+      else kept = true;
+    }
+  }
+  syncCapStatuses();
+}
+
+agentToggle.addEventListener('change', () => {
+  const on = agentToggle.checked;
+  agentStatus.textContent = on ? 'ON — capabilities compose' : 'OFF';
+  agentStatus.className    = 'cap-status ' + (on ? 'on' : 'off');
+  if (!on) enforceExclusive();
   updateUI();
 });
 
@@ -187,13 +236,20 @@ async function sendMessage() {
   const toolsOn     = toolsToggle.checked;
   const webSearchOn = webSearchToggle.checked;
   const ragOn       = ragToggle.checked;
-  const tagClass = ragOn ? 'rag'
+  const agentOn     = agentToggle.checked;
+  const tagClass = agentOn ? 'tools'
+    : ragOn ? 'rag'
     : webSearchOn ? 'websearch'
     : toolsOn ? 'tools'
     : memoryOn ? 'stateful' : 'stateless';
   // historySnap has both user+assistant messages; +1 for the current user message
   const totalMsgs = historySnap.length + 1;
-  const tagLabel = ragOn
+  const agentCaps = [
+    toolsOn && 'Tools', webSearchOn && 'Web', ragOn && 'RAG', memoryOn && `${totalMsgs} msgs`,
+  ].filter(Boolean).join(' + ');
+  const tagLabel = agentOn
+    ? (agentCaps ? `Agent · ${agentCaps}` : 'Agent')
+    : ragOn
     ? (memoryOn ? `RAG + ${totalMsgs} msgs` : 'RAG')
     : webSearchOn
     ? 'Web Search'
@@ -226,7 +282,7 @@ async function sendMessage() {
   chatEl.scrollTop = chatEl.scrollHeight;
 
   try {
-    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn, model: modelSelect.value };
+    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn, agent_mode: agentOn, model: modelSelect.value };
     console.group(`%c📤 API Call #${currentCall} — REQUEST`, 'color:#a78bfa;font-weight:bold');
     console.log('%cUser message:', 'color:#93c5fd', text);
     console.log('%cHistory sent (%d messages):', 'color:#93c5fd', historySnap.length, historySnap);
@@ -302,7 +358,7 @@ async function sendMessage() {
     if (data.usage) {
       const tok = document.getElementById(`tok-${currentCall}`);
       if (tok) tok.textContent = `${data.usage.prompt_tokens.toLocaleString()} prompt tok`;
-      if (memoryOn || toolsOn || webSearchOn) updateCtxMeter(data.usage.prompt_tokens);
+      if (memoryOn || toolsOn || webSearchOn || agentOn) updateCtxMeter(data.usage.prompt_tokens);
     }
 
     // Cost + latency + model badge

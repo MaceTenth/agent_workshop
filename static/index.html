@@ -35,6 +35,22 @@
     <aside class="sidebar">
       <div class="sidebar-header">Capabilities</div>
 
+      <!-- Agent mode — master switch that lets the capabilities below compose -->
+      <div class="capability-card" style="border-color:var(--accent);background:rgba(139,92,246,0.06)">
+        <div class="cap-top">
+          <div class="cap-title-row">
+            <span class="cap-icon">🤖</span>
+            <span class="cap-title">Agent Mode</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="agent-toggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="cap-desc">Compose everything: the model gets <strong>all</strong> the capabilities you switch on below — tools, web search, and RAG — together in one agentic loop.</div>
+        <div id="agent-status" class="cap-status off">OFF</div>
+      </div>
+
       <!-- Context window meter — lives at the top of the sidebar -->
       <div class="ctx-meter" id="ctx-meter">
         <div class="ctx-meter-label">

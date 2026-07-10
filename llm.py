@@ -225,3 +225,78 @@ def llm_with_web_search(user_message: str, history: list[dict], model: str = Non
         messages=msgs,
     )
     return _text(response), _usage(response), search_context
+
+
+def llm_agent(message: str, history: list[dict], tools_enabled: bool = False,
+              web_search_enabled: bool = False, rag_enabled: bool = False,
+              model: str = None, trace: dict = None) -> tuple[str, dict, list[dict], str]:
+    """
+    Combined 'Agent mode': hand the model every enabled capability at once —
+    tools (get_datetime / calculate), web_search, and RAG context — in a single
+    agentic loop. This is how a real agent composes the building blocks the
+    other modules demonstrate in isolation.
+    Returns (text, accumulated_usage, tool_invocations, rag_context).
+    """
+    from tools import TOOLS as ALL_TOOLS, execute_tool
+
+    mdl = model or MODEL
+
+    # Expose only the tools whose toggles are on
+    wanted = set()
+    if tools_enabled:
+        wanted |= {"get_datetime", "calculate"}
+    if web_search_enabled:
+        wanted |= {"web_search"}
+    tools = [t for t in ALL_TOOLS if t["name"] in wanted]
+
+    # RAG: retrieve and inject the records into the user turn
+    rag_context = ""
+    user_content = message
+    if rag_enabled:
+        from rag import retrieve, format_docs
+        docs = retrieve(message)
+        rag_context = format_docs(docs)
+        user_content = (
+            f"{rag_context}\n\n"
+            f"Using the above employee data as context when relevant, answer: {message}"
+        )
+
+    msgs = list(history) + [{"role": "user", "content": user_content}]
+    _preview(trace, "Agent", mdl, list(msgs), tools=[t["name"] for t in tools] or None)
+
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    invocations = []
+    use_cm = bool(tools) and mdl in CONTEXT_MGMT_MODELS
+
+    while True:
+        kwargs = dict(model=mdl, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=msgs)
+        if tools:
+            kwargs["tools"] = tools
+        if use_cm:
+            response = client.beta.messages.create(
+                betas=["context-management-2025-06-27"],
+                context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+                **kwargs,
+            )
+        else:
+            response = client.messages.create(**kwargs)
+
+        for k, v in _usage(response).items():
+            total_usage[k] += v
+
+        if response.stop_reason != "tool_use":
+            return _text(response), total_usage, invocations, rag_context
+
+        msgs.append({"role": "assistant", "content": response.content})
+        tool_results = []
+        for block in response.content:
+            if block.type != "tool_use":
+                continue
+            result = execute_tool(block.name, block.input)
+            invocations.append({"name": block.name, "args": block.input, "result": result})
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": result,
+            })
+        msgs.append({"role": "user", "content": tool_results})
