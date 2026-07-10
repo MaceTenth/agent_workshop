@@ -133,7 +133,12 @@ function updateUI() {
 
   // Agent mode takes priority — capabilities compose instead of being exclusive
   if (agentToggle.checked) {
-    stepBadge.textContent = 'AGENT MODE';
+    const badgeCaps = [];
+    if (tools)     badgeCaps.push('TOOLS');
+    if (webSearch) badgeCaps.push('WEB');
+    if (rag)       badgeCaps.push('RAG');
+    if (mem)       badgeCaps.push('MEMORY');
+    stepBadge.textContent = badgeCaps.length ? 'AGENT · ' + badgeCaps.join(' + ') : 'AGENT MODE';
     stepBadge.className    = 'step-badge tools';
     banner.className       = 'tools';
     const caps = [];
