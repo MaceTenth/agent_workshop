@@ -83,9 +83,9 @@
 
 /* ── Visualization Area ───────────────────────────── */
 .viz-area {
-  flex: 3;
+  flex: 2;
   position: relative;
-  min-height: 400px;
+  min-height: 330px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -97,6 +97,7 @@
   height: 400px;
   position: relative;
   flex-shrink: 0;
+  transform: scale(0.8);
 }
 
 .def-connections {
