@@ -356,3 +356,14 @@
 .dt-link { cursor: pointer; transition: filter 0.15s; }
 .dt-link:hover { filter: brightness(1.25); text-decoration: underline; }
 .decision-hint { font-size: 11px; font-weight: 400; color: var(--text-muted, #8b90b0); }
+
+/* Tradeoffs screen: show the decision guide right after the intro,
+   above the comparison cards, so all cases are visible on landing */
+#lesson-tradeoffs .lesson-intro   { order: 1; }
+#lesson-tradeoffs .decision-guide { order: 2; }
+#lesson-tradeoffs .tradeoff-grid  { order: 3; }
+
+/* Flex items in a lesson section must keep their natural height — otherwise
+   the column layout shrinks them and overflow:hidden clips the content
+   (this was collapsing the decision table to a single row) */
+.lesson-section > * { flex-shrink: 0; }
