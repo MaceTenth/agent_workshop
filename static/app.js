@@ -11,6 +11,54 @@ const ragToggle       = document.getElementById('rag-toggle');
 const ragStatus       = document.getElementById('rag-status');
 const agentToggle     = document.getElementById('agent-toggle');
 const agentStatus     = document.getElementById('agent-status');
+const sessionCostEl   = document.getElementById('session-cost');
+const chipsEl         = document.getElementById('prompt-chips');
+
+// Running session totals (shown in the header)
+let sessionCost  = 0;
+let sessionCalls = 0;
+
+// Starter prompts shown as clickable chips, chosen by the active mode
+const EXAMPLE_PROMPTS = {
+  agent:      ["What is Karen Lopez's salary ÷ 12?", "Who earns the most, and what's their monthly pay?"],
+  rag:        ["Who is the highest-paid engineer?", "List everyone in the HR department."],
+  websearch:  ["What's the latest Claude model?", "Who is the current CEO of Anthropic?"],
+  tools:      ["What is 137 × 24?", "What's the date and time right now?"],
+  memory:     ["My name is Alex.", "What's my name?"],
+  stateless:  ["Explain what an LLM is in one sentence.", "Write a haiku about databases."],
+};
+
+function currentMode() {
+  if (agentToggle.checked)     return 'agent';
+  if (ragToggle.checked)       return 'rag';
+  if (webSearchToggle.checked) return 'websearch';
+  if (toolsToggle.checked)     return 'tools';
+  if (memToggle.checked)       return 'memory';
+  return 'stateless';
+}
+
+function renderChips() {
+  const prompts = EXAMPLE_PROMPTS[currentMode()] || [];
+  chipsEl.innerHTML = '';
+  for (const p of prompts) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = p;
+    b.addEventListener('click', () => {
+      inputEl.value = p;
+      inputEl.focus();
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    });
+    chipsEl.appendChild(b);
+  }
+}
+
+function addSessionCost(cost) {
+  sessionCalls += 1;
+  sessionCost += (typeof cost === 'number' ? cost : 0);
+  sessionCostEl.textContent = `$${sessionCost.toFixed(5)} · ${sessionCalls} call${sessionCalls !== 1 ? 's' : ''}`;
+}
 const banner          = document.getElementById('mode-banner');
 const modeText    = document.getElementById('mode-text');
 const stepBadge   = document.getElementById('step-badge');
@@ -50,6 +98,8 @@ function updateUI() {
   const tools     = toolsToggle.checked;
   const webSearch = webSearchToggle.checked;
   const rag       = ragToggle.checked;
+
+  renderChips();
 
   // Agent mode takes priority — capabilities compose instead of being exclusive
   if (agentToggle.checked) {
@@ -276,10 +326,18 @@ async function sendMessage() {
       <span class="bubble-role">AI</span>
       <span class="bubble-content">
         <div class="thinking"><span></span><span></span><span></span></div>
+        <span class="elapsed-timer" id="elapsed-${currentCall}"></span>
       </span>
     </div>`;
   chatEl.appendChild(card);
   chatEl.scrollTop = chatEl.scrollHeight;
+
+  // Live elapsed-time ticker so slow calls (agent, web search) don't look frozen
+  const startT = performance.now();
+  const elapsedEl = document.getElementById(`elapsed-${currentCall}`);
+  const elapsedTimer = setInterval(() => {
+    if (elapsedEl) elapsedEl.textContent = ' ' + ((performance.now() - startT) / 1000).toFixed(1) + 's…';
+  }, 100);
 
   try {
     const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn, agent_mode: agentOn, model: modelSelect.value };
@@ -297,6 +355,8 @@ async function sendMessage() {
 
     if (!res.ok) throw new Error(`Server error ${res.status}`);
     const data = await res.json();
+    clearInterval(elapsedTimer);
+    addSessionCost(data.cost_usd);
 
     // Inject tool call bubbles before the AI response
     if (data.tool_calls && data.tool_calls.length > 0) {
@@ -403,6 +463,7 @@ async function sendMessage() {
     document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).innerHTML =
       `<span style="color:#f87171">Error: ${escapeHtml(err.message)}</span>`;
   } finally {
+    clearInterval(elapsedTimer);
     sendBtn.disabled = false;
     inputEl.disabled = false;
     inputEl.focus();
@@ -425,3 +486,6 @@ function escapeHtml(str) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Initial render — show the stateless starter chips on load
+renderChips();

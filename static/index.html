@@ -23,6 +23,7 @@
         <option value="claude-haiku-4-5">Haiku 4.5 · $1/$5</option>
       </select>
     </label>
+    <span id="session-cost" title="Total spent this session" style="font-size:12px;font-weight:700;color:var(--green,#34d399);background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;padding:5px 10px;white-space:nowrap">$0.00000 · 0 calls</span>
     <a href="agent-definition.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">💡 What is an Agent? →</a>
     <a href="planning.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🧠 Planning →</a>
     <a href="agent.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🤖 Agent →</a>
@@ -141,6 +142,8 @@
           <p>Send a message to make a stateless LLM call.<br/>Toggle Memory in the sidebar to see the difference.</p>
         </div>
       </div>
+
+      <div id="prompt-chips" class="prompt-chips"></div>
 
       <div class="input-area">
         <textarea id="message-input" placeholder="Type a message…" autofocus></textarea>

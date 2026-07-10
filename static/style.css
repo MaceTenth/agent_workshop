@@ -585,3 +585,29 @@ header {
   line-height: 1.5;
   color: var(--text);
 }
+
+/* ── Example-prompt chips ─────────────────────────────────────────── */
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 4px 10px;
+}
+.prompt-chips:empty { display: none; }
+.chip {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface, #1a1a24);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.08);
+}
+.elapsed-timer { color: var(--text-muted); font-variant-numeric: tabular-nums; }
