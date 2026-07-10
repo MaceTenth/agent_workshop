@@ -67,7 +67,7 @@
 }
 
 .def-header {
-  padding: 24px 30px;
+  padding: 14px 30px;
   text-align: center;
   border-bottom: 1px solid var(--border);
 }
@@ -85,7 +85,7 @@
 .viz-area {
   flex: 3;
   position: relative;
-  min-height: 420px;
+  min-height: 400px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -228,7 +228,7 @@
 /* ── Logs Area ────────────────────────────────────── */
 .log-area {
   flex: 2;
-  padding: 20px 30px;
+  padding: 12px 30px;
   overflow-y: auto;
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 12px;
@@ -257,7 +257,7 @@
 .footer-note {
   background: #450a0a;
   color: #fecaca;
-  padding: 12px 24px;
+  padding: 8px 24px;
   font-size: 13px;
   display: flex;
   align-items: center;
