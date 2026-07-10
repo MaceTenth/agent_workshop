@@ -15,8 +15,9 @@ const sessionCostEl   = document.getElementById('session-cost');
 const chipsEl         = document.getElementById('prompt-chips');
 
 // Running session totals (shown in the header)
-let sessionCost  = 0;
-let sessionCalls = 0;
+let sessionCost   = 0;
+let sessionCalls  = 0;
+let sessionTokens = 0;
 
 // Starter prompts shown as clickable chips, chosen by the active mode
 const EXAMPLE_PROMPTS = {
@@ -54,10 +55,16 @@ function renderChips() {
   }
 }
 
-function addSessionCost(cost) {
-  sessionCalls += 1;
-  sessionCost += (typeof cost === 'number' ? cost : 0);
-  sessionCostEl.textContent = `$${sessionCost.toFixed(5)} · ${sessionCalls} call${sessionCalls !== 1 ? 's' : ''}`;
+function fmtTokens(n) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+}
+
+function addSessionCost(cost, tokens) {
+  sessionCalls  += 1;
+  sessionCost   += (typeof cost === 'number' ? cost : 0);
+  sessionTokens += (typeof tokens === 'number' ? tokens : 0);
+  sessionCostEl.textContent =
+    `${fmtTokens(sessionTokens)} tok · $${sessionCost.toFixed(5)} · ${sessionCalls} call${sessionCalls !== 1 ? 's' : ''}`;
 }
 
 // A small "Copy" button that copies getText() to the clipboard
@@ -88,6 +95,77 @@ clearBtn.addEventListener('click', () => {
   emptyState = document.getElementById('empty-state');
   resetCtxMeter();
   inputEl.focus();
+});
+
+// Escape HTML, then turn URLs into clickable links (for web-search context)
+function linkify(str) {
+  return escapeHtml(str).replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener" style="color:var(--accent-light,#a78bfa)">$1</a>'
+  );
+}
+
+// Minimal JSON syntax highlighter for the peek panel. Run the regex on the
+// RAW JSON (real quotes) and escape each matched token — escaping first would
+// turn " into &quot; and the string/key matcher would never fire.
+function highlightJson(obj) {
+  const json = JSON.stringify(obj, null, 2);
+  return json.replace(
+    /("(\\.|[^"\\])*"(\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*)/g,
+    (m) => {
+      let cls = 'tok-num';
+      if (/^"/.test(m)) cls = /:$/.test(m) ? 'tok-key' : 'tok-str';
+      else if (/true|false|null/.test(m)) cls = 'tok-bool';
+      return `<span class="${cls}">${escapeHtml(m)}</span>`;
+    }
+  );
+}
+
+// ── Persist model + toggle selections across refreshes ──────────────
+const STATE_KEY = 'agentWorkshopState';
+function saveState() {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify({
+      model: modelSelect.value,
+      memory: memToggle.checked, tools: toolsToggle.checked,
+      web: webSearchToggle.checked, rag: ragToggle.checked, agent: agentToggle.checked,
+    }));
+  } catch (e) { /* localStorage unavailable — ignore */ }
+}
+function restoreState() {
+  let s;
+  try { s = JSON.parse(localStorage.getItem(STATE_KEY)); } catch (e) { return; }
+  if (!s) return;
+  if (s.model) modelSelect.value = s.model;
+  const map = [
+    [agentToggle, agentStatus, s.agent, 'ON — capabilities compose', 'OFF'],
+    [memToggle, memStatus, s.memory, 'ON — stateful', 'OFF — stateless'],
+    [toolsToggle, toolsStatus, s.tools, 'ON', 'OFF'],
+    [webSearchToggle, webSearchStatus, s.web, 'ON', 'OFF'],
+    [ragToggle, ragStatus, s.rag, 'ON', 'OFF'],
+  ];
+  for (const [tog, stat, val, onTxt, offTxt] of map) {
+    tog.checked = !!val;
+    stat.textContent = val ? onTxt : offTxt;
+    stat.className = 'cap-status ' + (val ? 'on' : 'off');
+  }
+  updateUI();
+}
+
+// ── Export the conversation as Markdown ─────────────────────────────
+const exportBtn = document.getElementById('export-btn');
+exportBtn.addEventListener('click', () => {
+  if (!history.length) return;
+  let md = '# Agent Workshop conversation\n\n';
+  for (const m of history) {
+    md += `**${m.role === 'user' ? 'You' : 'AI'}:** ${m.content}\n\n`;
+  }
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'agent-workshop-conversation.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 const banner          = document.getElementById('mode-banner');
 const modeText    = document.getElementById('mode-text');
@@ -130,6 +208,7 @@ function updateUI() {
   const rag       = ragToggle.checked;
 
   renderChips();
+  saveState();
 
   // Agent mode takes priority — capabilities compose instead of being exclusive
   if (agentToggle.checked) {
@@ -346,7 +425,7 @@ async function sendMessage() {
   card.className = 'exchange';
   card.innerHTML = `
     <div class="exchange-header">
-      <span class="call-label">API Call #${currentCall}</span>
+      <span class="call-label">API Call #${currentCall} <span class="call-time">${new Date().toLocaleTimeString()}</span></span>
       <div class="exchange-meta">
         <span class="ctx-tag ${tagClass}">${escapeHtml(tagLabel)}</span>
         <span class="tok-tag" id="tok-${currentCall}"></span>
@@ -388,10 +467,14 @@ async function sendMessage() {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    if (!res.ok) {
+      let msg = `Request failed (${res.status}). Please try again.`;
+      try { const e = await res.json(); if (e && e.error) msg = e.error; } catch (_) {}
+      throw new Error(msg);
+    }
     const data = await res.json();
     clearInterval(elapsedTimer);
-    addSessionCost(data.cost_usd);
+    addSessionCost(data.cost_usd, data.usage && data.usage.total_tokens);
 
     // Inject tool call bubbles before the AI response
     if (data.tool_calls && data.tool_calls.length > 0) {
@@ -425,8 +508,8 @@ async function sendMessage() {
         <span class="bubble-role">WEB</span>
         <span class="bubble-content">
           <div class="web-search-info">
-            <div class="web-search-preview" id="ws-preview-${currentCall}">${escapeHtml(preview)}${hasFull ? '…' : ''}</div>
-            ${hasFull ? `<button class="web-search-toggle" onclick="toggleWebSearch(${currentCall})">&#9660; Show full context</button><div class="web-search-full" id="ws-full-${currentCall}" style="display:none">${escapeHtml(data.search_context)}</div>` : ''}
+            <div class="web-search-preview" id="ws-preview-${currentCall}">${linkify(preview)}${hasFull ? '…' : ''}</div>
+            ${hasFull ? `<button class="web-search-toggle" onclick="toggleWebSearch(${currentCall})">&#9660; Show full context</button><div class="web-search-full" id="ws-full-${currentCall}" style="display:none">${linkify(data.search_context)}</div>` : ''}
           </div>
         </span>`;
       card.insertBefore(webEl, aiEl);
@@ -447,7 +530,10 @@ async function sendMessage() {
       card.insertBefore(ragEl, aiEl);
     }
 
-    document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).innerHTML = marked.parse(data.response);
+    const answer = (data.response && data.response.trim())
+      ? data.response
+      : '_(No text returned — the model may have declined this request.)_';
+    document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).innerHTML = marked.parse(answer);
     document.getElementById(`ai-bubble-${currentCall}`).appendChild(makeCopyBtn(() => data.response, 'Copy'));
 
     // Show token usage on the card header
@@ -473,7 +559,7 @@ async function sendMessage() {
       det.className = 'peek';
       det.innerHTML =
         `<summary>🔍 Peek under the hood — request sent to Claude</summary>` +
-        `<pre class="peek-json">${escapeHtml(JSON.stringify(data.request_preview, null, 2))}</pre>`;
+        `<pre class="peek-json">${highlightJson(data.request_preview)}</pre>`;
       const pk = makeCopyBtn(() => JSON.stringify(data.request_preview, null, 2), 'Copy JSON');
       pk.classList.add('peek-copy');
       det.appendChild(pk);
@@ -499,8 +585,13 @@ async function sendMessage() {
     history.push({ role: 'assistant', content: data.response });
 
   } catch (err) {
-    document.querySelector(`#ai-bubble-${currentCall} .bubble-content`).innerHTML =
-      `<span style="color:#f87171">Error: ${escapeHtml(err.message)}</span>`;
+    const content = document.querySelector(`#ai-bubble-${currentCall} .bubble-content`);
+    content.innerHTML = `<span style="color:#f87171">⚠ ${escapeHtml(err.message)}</span> `;
+    const retry = document.createElement('button');
+    retry.className = 'retry-btn';
+    retry.textContent = '↻ Retry';
+    retry.addEventListener('click', () => { inputEl.value = text; sendMessage(); });
+    content.appendChild(retry);
   } finally {
     clearInterval(elapsedTimer);
     sendBtn.disabled = false;
@@ -526,5 +617,7 @@ function escapeHtml(str) {
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Initial render — show the stateless starter chips on load
-renderChips();
+// Save the model choice too, and restore everything on load
+modelSelect.addEventListener('change', saveState);
+restoreState();
+updateUI();

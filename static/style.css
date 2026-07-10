@@ -613,8 +613,7 @@ header {
 .elapsed-timer { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* ── Clear-conversation button ────────────────────────────────────── */
-#clear-btn {
-  margin-left: auto;
+#clear-btn, #export-btn {
   font-size: 11px;
   font-weight: 600;
   color: inherit;
@@ -627,7 +626,8 @@ header {
   white-space: nowrap;
   transition: opacity 0.15s;
 }
-#clear-btn:hover { opacity: 1; }
+#export-btn { margin-left: auto; }
+#clear-btn:hover, #export-btn:hover { opacity: 1; }
 
 /* ── Copy buttons (answer + peek JSON) ────────────────────────────── */
 .bubble.ai { position: relative; }
@@ -657,3 +657,26 @@ header {
 /* Hide the banner ⚡ text in Agent mode (the step badge already lists the caps) */
 #mode-banner.agent-collapsed .icon,
 #mode-banner.agent-collapsed #mode-text { display: none; }
+
+/* ── Peek JSON syntax highlighting ────────────────────────────────── */
+.peek-json .tok-key  { color: #93c5fd; }
+.peek-json .tok-str  { color: #86efac; }
+.peek-json .tok-num  { color: #fbbf24; }
+.peek-json .tok-bool { color: #c4b5fd; }
+
+/* ── Retry button (on failed calls) ───────────────────────────────── */
+.retry-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface, #1a1a24);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.retry-btn:hover { background: rgba(139, 92, 246, 0.12); }
+
+/* ── Per-call timestamp ───────────────────────────────────────────── */
+.call-time { color: var(--text-muted); font-weight: 400; font-size: 11px; margin-left: 6px; }

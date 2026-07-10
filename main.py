@@ -1,5 +1,7 @@
 import time
+import anthropic
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search, llm_with_rag, llm_agent
@@ -14,6 +16,27 @@ async def no_cache(request, call_next):
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+# ── Turn raw Claude API errors into a clean, human-readable message ───────────
+_FRIENDLY_ERRORS = {
+    401: "Invalid API key — check ANTHROPIC_API_KEY in your .env file.",
+    403: "This API key doesn't have access to that model.",
+    404: "Model not found — check the model name.",
+    429: "Rate limited by the API — wait a few seconds and try again.",
+    529: "The API is temporarily overloaded — please retry in a moment.",
+}
+
+
+@app.exception_handler(anthropic.APIError)
+async def anthropic_error_handler(request, exc):
+    if isinstance(exc, anthropic.APIConnectionError):
+        return JSONResponse(status_code=503, content={"error": "Couldn't reach Claude — check your connection and retry."})
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        message = _FRIENDLY_ERRORS.get(status, f"Claude API error ({status}). Please try again.")
+        return JSONResponse(status_code=status, content={"error": message})
+    return JSONResponse(status_code=502, content={"error": "Something went wrong talking to Claude. Please try again."})
 
 
 DEFAULT_MODEL = "claude-sonnet-5"
@@ -59,7 +82,7 @@ class AgentRequest(BaseModel):
 
 
 @app.post("/agent")
-async def agent(request: AgentRequest):
+def agent(request: AgentRequest):
     t0 = time.perf_counter()
     result = run_stock_agent(request.ticker, request.risk_tolerance, model=request.model)
     result["latency_ms"] = round((time.perf_counter() - t0) * 1000)
@@ -69,7 +92,7 @@ async def agent(request: AgentRequest):
 
 
 @app.post("/plan")
-async def plan(request: PlanRequest):
+def plan(request: PlanRequest):
     from planning_llm import zero_shot, few_shot, chain_of_thought, decompose_task, react_loop
 
     t0 = time.perf_counter()
@@ -100,7 +123,7 @@ async def plan(request: PlanRequest):
 
 
 @app.post("/chat")
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
     base = request.history + [{"role": "user", "content": request.message}]
     tool_invocations: list[dict] = []
     search_context: str = ""
