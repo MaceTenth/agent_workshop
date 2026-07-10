@@ -52,8 +52,10 @@ function animateParticle(particle, pathNode, duration) {
       const progress = Math.min(elapsed / duration, 1);
       
       const point = pathNode.getPointAtLength(progress * pathLength);
-      particle.setAttribute('cx', point.x);
-      particle.setAttribute('cy', point.y);
+      // Move via transform (GPU-composited) rather than cx/cy so the
+      // drop-shadow glow is rasterized once instead of recomputed each
+      // frame — this removes the flicker/aliasing while it travels.
+      particle.setAttribute('transform', `translate(${point.x} ${point.y})`);
 
       if (progress < 1) {
         requestAnimationFrame(step);

@@ -112,6 +112,9 @@
   stroke-dasharray: 6 6;
   opacity: 0.4;
   transition: stroke-dasharray 0.3s, opacity 0.3s;
+  shape-rendering: geometricPrecision;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .stroke-blue { stroke: #3b82f6; }
 .stroke-purple { stroke: #d8b4fe; }
@@ -126,6 +129,8 @@
 
 .flow-particle {
   transition: opacity 0.2s;
+  transform-box: fill-box;
+  will-change: transform;
 }
 .flow-particle.hidden { opacity: 0; }
 .particle-blue { fill: #93c5fd; filter: drop-shadow(0 0 8px #3b82f6); }
