@@ -2,12 +2,14 @@ import time
 import uuid
 import threading
 import anthropic
+import openai
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from llm import simple_llm_call, llm_with_memory, llm_with_tools, llm_with_web_search, llm_with_rag, llm_agent
 from agent_llm import run_stock_agent
+from providers import MODEL_CATALOG, DEFAULT_MODEL as PROVIDER_DEFAULT_MODEL, key_status, MissingAPIKeyError
 
 app = FastAPI(title="Agent Workshop")
 
@@ -20,9 +22,9 @@ async def no_cache(request, call_next):
     return response
 
 
-# ── Turn raw Claude API errors into a clean, human-readable message ───────────
+# ── Turn raw provider API errors into a clean, human-readable message ─────────
 _FRIENDLY_ERRORS = {
-    401: "Invalid API key — check ANTHROPIC_API_KEY in your .env file.",
+    401: "Invalid API key — check your .env file for the selected provider.",
     403: "This API key doesn't have access to that model.",
     404: "Model not found — check the model name.",
     429: "Rate limited by the API — wait a few seconds and try again.",
@@ -31,31 +33,59 @@ _FRIENDLY_ERRORS = {
 
 
 def _friendly_error(exc: Exception) -> str:
-    if isinstance(exc, anthropic.APIConnectionError):
-        return "Couldn't reach Claude — check your connection and retry."
+    if isinstance(exc, MissingAPIKeyError):
+        return str(exc)
+    if isinstance(exc, (anthropic.APIConnectionError, openai.APIConnectionError)):
+        return "Couldn't reach the model provider — check your connection and retry."
     status = getattr(exc, "status_code", None)
     if isinstance(status, int):
-        return _FRIENDLY_ERRORS.get(status, f"Claude API error ({status}). Please try again.")
-    if isinstance(exc, anthropic.APIError):
-        return "Something went wrong talking to Claude. Please try again."
+        return _FRIENDLY_ERRORS.get(status, f"API error ({status}). Please try again.")
+    if isinstance(exc, (anthropic.APIError, openai.APIError)):
+        return "Something went wrong talking to the model provider. Please try again."
     return "Something went wrong. Please try again."
+
+
+def _error_status(exc: Exception) -> int:
+    if isinstance(exc, MissingAPIKeyError):
+        return 400
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        return status
+    if isinstance(exc, (anthropic.APIConnectionError, openai.APIConnectionError)):
+        return 503
+    return 502
+
+
+@app.exception_handler(MissingAPIKeyError)
+async def missing_key_handler(request, exc):
+    return JSONResponse(status_code=400, content={"error": _friendly_error(exc)})
 
 
 @app.exception_handler(anthropic.APIError)
 async def anthropic_error_handler(request, exc):
-    status = getattr(exc, "status_code", None)
-    code = status if isinstance(status, int) else (503 if isinstance(exc, anthropic.APIConnectionError) else 502)
-    return JSONResponse(status_code=code, content={"error": _friendly_error(exc)})
+    return JSONResponse(status_code=_error_status(exc), content={"error": _friendly_error(exc)})
 
 
-DEFAULT_MODEL = "claude-sonnet-5"
+@app.exception_handler(openai.APIError)
+async def openai_error_handler(request, exc):
+    return JSONResponse(status_code=_error_status(exc), content={"error": _friendly_error(exc)})
+
+
+DEFAULT_MODEL = PROVIDER_DEFAULT_MODEL
 
 # ── Per-model pricing (USD per 1M tokens: input, output) for the cost badge ───
 PRICES = {
-    "claude-sonnet-5": (3.0, 15.0),
-    "claude-opus-4-8": (5.0, 25.0),
-    "claude-haiku-4-5": (1.0, 5.0),
+    model: cfg["price"]
+    for models in MODEL_CATALOG.values()
+    for model, cfg in models.items()
 }
+
+
+@app.get("/config")
+def config():
+    """Model catalog + which providers have an API key configured, so the
+    frontend can populate the picker and show a warning for missing keys."""
+    return {"models": MODEL_CATALOG, "keys": key_status(), "default_model": DEFAULT_MODEL}
 
 
 def _cost(usage: dict, model: str) -> float:

@@ -5,56 +5,42 @@ Covers three core concepts:
   1. Prompt Engineering  — same question, different prompting strategies
   2. Task Decomposition  — break a complex task into ordered subtasks
   3. ReAct Loop          — Reason + Act traces (Think → Act → Observe → Answer)
+
+Works with either Anthropic or OpenAI models via providers.complete().
 """
 
 import os
-import anthropic
 from dotenv import load_dotenv
+from providers import complete as provider_complete, DEFAULT_MODEL
 
 load_dotenv()
 
-client = anthropic.Anthropic()
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+MODEL = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL)
 MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "2048"))
 
 
-def _usage(response) -> dict:
-    u = response.usage
-    prompt = u.input_tokens
-    completion = u.output_tokens
-    return {
-        "prompt_tokens": prompt,
-        "completion_tokens": completion,
-        "total_tokens": prompt + completion,
-    }
-
-
-def _text(response) -> str:
-    return "".join(b.text for b in response.content if b.type == "text")
+def _complete(mdl, system, messages):
+    text, usage, _, _ = provider_complete(mdl, system, messages, max_tokens=MAX_TOKENS)
+    return text, usage
 
 
 # ── Prompt Engineering ────────────────────────────────────────────────────────
 
 def zero_shot(question: str, model: str = None) -> tuple[str, dict]:
     """Direct answer — no examples, no reasoning instructions."""
-    response = client.messages.create(
-        model=model or MODEL,
-        max_tokens=MAX_TOKENS,
-        system="You are a helpful assistant. Answer directly and concisely.",
-        messages=[
-            {"role": "user", "content": question},
-        ],
+    return _complete(
+        model or MODEL,
+        "You are a helpful assistant. Answer directly and concisely.",
+        [{"role": "user", "content": question}],
     )
-    return _text(response), _usage(response)
 
 
 def few_shot(question: str, model: str = None) -> tuple[str, dict]:
     """Provide two worked examples before asking the real question."""
-    response = client.messages.create(
-        model=model or MODEL,
-        max_tokens=MAX_TOKENS,
-        system="You are a helpful assistant that follows the pattern shown in the examples.",
-        messages=[
+    return _complete(
+        model or MODEL,
+        "You are a helpful assistant that follows the pattern shown in the examples.",
+        [
             {
                 "role": "user",
                 "content": (
@@ -67,23 +53,16 @@ def few_shot(question: str, model: str = None) -> tuple[str, dict]:
             },
         ],
     )
-    return _text(response), _usage(response)
 
 
 def chain_of_thought(question: str, model: str = None) -> tuple[str, dict]:
     """Instruct the model to reason step-by-step before giving its final answer."""
-    response = client.messages.create(
-        model=model or MODEL,
-        max_tokens=MAX_TOKENS,
-        system=(
-            "You are a helpful assistant. Before answering, think step by step. "
-            "Show your full reasoning process, then state your final answer clearly."
-        ),
-        messages=[
-            {"role": "user", "content": question},
-        ],
+    return _complete(
+        model or MODEL,
+        "You are a helpful assistant. Before answering, think step by step. "
+        "Show your full reasoning process, then state your final answer clearly.",
+        [{"role": "user", "content": question}],
     )
-    return _text(response), _usage(response)
 
 
 # ── Task Decomposition ────────────────────────────────────────────────────────
@@ -103,15 +82,10 @@ def decompose_task(task: str, model: str = None) -> tuple[str, dict, list[str]]:
         "REASONING:\n"
         "[Explain why you chose this breakdown and what the agent needs to keep in mind]"
     )
-    response = client.messages.create(
-        model=model or MODEL,
-        max_tokens=MAX_TOKENS,
-        system=system,
-        messages=[
-            {"role": "user", "content": f"Decompose this task into subtasks: {task}"},
-        ],
+    content, usage = _complete(
+        model or MODEL, system,
+        [{"role": "user", "content": f"Decompose this task into subtasks: {task}"}],
     )
-    content = _text(response)
 
     steps: list[str] = []
     for line in content.split("\n"):
@@ -119,7 +93,7 @@ def decompose_task(task: str, model: str = None) -> tuple[str, dict, list[str]]:
         if stripped and stripped[0].isdigit() and ". " in stripped:
             steps.append(stripped.split(". ", 1)[1])
 
-    return content, _usage(response), steps
+    return content, usage, steps
 
 
 # ── ReAct Loop ────────────────────────────────────────────────────────────────
@@ -141,15 +115,7 @@ def react_loop(task: str, model: str = None) -> tuple[list[dict], dict]:
         "  Final Answer: [your complete, well-reasoned answer]\n\n"
         "Be educational and concrete — this is a workshop demo showing how agents think."
     )
-    response = client.messages.create(
-        model=model or MODEL,
-        max_tokens=MAX_TOKENS,
-        system=system,
-        messages=[
-            {"role": "user", "content": task},
-        ],
-    )
-    content = _text(response)
+    content, usage = _complete(model or MODEL, system, [{"role": "user", "content": task}])
 
     PREFIXES = [
         ("Thought:",      "think"),
@@ -177,4 +143,4 @@ def react_loop(task: str, model: str = None) -> tuple[list[dict], dict]:
     if current:
         steps.append(current)
 
-    return steps, _usage(response)
+    return steps, usage

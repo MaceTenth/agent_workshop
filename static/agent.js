@@ -34,6 +34,7 @@ function showError(msg) {
 async function runAgent() {
   const ticker = tickerInput.value.trim().toUpperCase();
   const risk_tolerance = document.getElementById('risk-select').value;
+  const model = document.getElementById('model-select').value;
   if (!ticker) { tickerInput.focus(); return; }
 
   // --- Show loading with live status ---
@@ -49,9 +50,13 @@ async function runAgent() {
     const res = await fetch('/agent/start', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ticker, risk_tolerance }),
+      body:    JSON.stringify({ ticker, risk_tolerance, model }),
     });
-    if (!res.ok) throw new Error(`Couldn't start the agent (HTTP ${res.status}).`);
+    if (!res.ok) {
+      let msg = `Couldn't start the agent (HTTP ${res.status}).`;
+      try { const e = await res.json(); if (e && e.error) msg = e.error; } catch (_) {}
+      throw new Error(msg);
+    }
     jobId = (await res.json()).job_id;
   } catch (err) {
     showError(err.message);
@@ -315,3 +320,23 @@ function escHtml(str) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// ── Provider API-key warning: fetch /config and warn if the selected
+// provider's key isn't set in .env ────────────────────────────────────────
+const modelSelectEl = document.getElementById('model-select');
+const keyWarningEl  = document.getElementById('key-warning');
+
+function updateKeyWarning(keyStatus) {
+  const opt = modelSelectEl.selectedOptions[0];
+  const provider = opt && opt.closest('optgroup') ? opt.closest('optgroup').label.toLowerCase() : null;
+  const missing = provider && keyStatus && keyStatus[provider] === false;
+  keyWarningEl.style.display = missing ? 'inline-block' : 'none';
+}
+
+fetch('/config')
+  .then((r) => r.json())
+  .then((cfg) => {
+    updateKeyWarning(cfg.keys);
+    modelSelectEl.addEventListener('change', () => updateKeyWarning(cfg.keys));
+  })
+  .catch(() => { /* /config unreachable — silently skip the warning banner */ });

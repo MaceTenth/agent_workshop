@@ -621,3 +621,31 @@ function escapeHtml(str) {
 modelSelect.addEventListener('change', saveState);
 restoreState();
 updateUI();
+
+// ── Provider API-key warning: fetch /config and grey out / warn about any
+// provider that has no key configured in .env ───────────────────────────────
+const keyWarningEl = document.getElementById('key-warning');
+
+function updateKeyWarning(keyStatus) {
+  const opt = modelSelect.selectedOptions[0];
+  const provider = opt && opt.closest('optgroup') ? opt.closest('optgroup').label.toLowerCase() : null;
+  const missing = provider && keyStatus && keyStatus[provider] === false;
+  keyWarningEl.style.display = missing ? 'inline-block' : 'none';
+  keyWarningEl.title = missing
+    ? `No API key configured for ${opt.closest('optgroup').label}. Add it to your .env file to use this model.`
+    : '';
+}
+
+fetch('/config')
+  .then((r) => r.json())
+  .then((cfg) => {
+    for (const opt of modelSelect.options) {
+      const provider = opt.closest('optgroup') ? opt.closest('optgroup').label.toLowerCase() : null;
+      if (provider && cfg.keys && cfg.keys[provider] === false) {
+        opt.textContent += ' (no API key)';
+      }
+    }
+    updateKeyWarning(cfg.keys);
+    modelSelect.addEventListener('change', () => updateKeyWarning(cfg.keys));
+  })
+  .catch(() => { /* /config unreachable — silently skip the warning banner */ });

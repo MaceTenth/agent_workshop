@@ -1,16 +1,18 @@
 import os
-import anthropic
 from dotenv import load_dotenv
+from providers import (
+    anthropic_client, openai_client, provider_for_model, require_key,
+    to_openai_tools, openai_usage, openai_text, complete as provider_complete,
+    DEFAULT_MODEL,
+)
 
 load_dotenv()
 
-# Resolves ANTHROPIC_API_KEY from the environment (loaded from .env above).
-client = anthropic.Anthropic()
-MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5")
+MODEL = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL)
 MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "2048"))
 
 # Models that support the context-management betas (compaction / context
-# editing). A model outside this set (e.g. Haiku) falls back to a plain call.
+# editing). Anthropic-only — OpenAI calls always fall back to a plain call.
 CONTEXT_MGMT_MODELS = {
     "claude-sonnet-5", "claude-sonnet-4-6",
     "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",
@@ -52,6 +54,15 @@ def _preview(trace, mode, model, messages, tools=None):
         }
 
 
+def _complete(mdl, system, messages, tools=None, use_context_mgmt=False, cm_beta=None, cm_edit=None):
+    """Thin wrapper around providers.complete() using this module's MAX_TOKENS."""
+    text, usage, response, provider = provider_complete(
+        mdl, system, messages, max_tokens=MAX_TOKENS, tools=tools,
+        use_context_mgmt=use_context_mgmt, cm_beta=cm_beta, cm_edit=cm_edit,
+    )
+    return text, usage, response, provider
+
+
 def simple_llm_call(user_message: str, model: str = None, trace: dict = None) -> tuple[str, dict]:
     """
     A single, stateless LLM call.
@@ -61,13 +72,8 @@ def simple_llm_call(user_message: str, model: str = None, trace: dict = None) ->
     mdl = model or MODEL
     messages = [{"role": "user", "content": user_message}]
     _preview(trace, "Stateless", mdl, messages)
-    response = client.messages.create(
-        model=mdl,
-        max_tokens=MAX_TOKENS,
-        system=SYSTEM_PROMPT,
-        messages=messages,
-    )
-    return _text(response), _usage(response)
+    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, messages)
+    return text, usage
 
 
 def llm_with_memory(messages: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict]:
@@ -78,91 +84,96 @@ def llm_with_memory(messages: list[dict], model: str = None, trace: dict = None)
 
     Context management — compaction: once the history approaches the context
     window, Claude summarizes the earlier turns server-side instead of failing
-    or silently dropping them, so the conversation can keep going.
+    or silently dropping them, so the conversation can keep going. (Anthropic
+    only; OpenAI models fall back to a plain call with the full history.)
     Returns (content, usage).
     """
     mdl = model or MODEL
     _preview(trace, "Memory", mdl, messages)
-    if mdl in CONTEXT_MGMT_MODELS:
-        response = client.beta.messages.create(
-            betas=["compact-2026-01-12"],
-            model=mdl,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-            context_management={"edits": [{"type": "compact_20260112"}]},
-        )
-    else:
-        response = client.messages.create(
-            model=mdl,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=messages,
-        )
-    return _text(response), _usage(response)
+    text, usage, _, _ = _complete(
+        mdl, SYSTEM_PROMPT, messages,
+        use_context_mgmt=True, cm_beta="compact-2026-01-12", cm_edit={"type": "compact_20260112"},
+    )
+    return text, usage
 
 
 def llm_with_tools(messages: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, list[dict]]:
     """
-    Agentic loop with Claude tool use.
+    Agentic loop with tool use.
     Calls the model, executes any tool calls, feeds results back, and
-    repeats until the model returns a final text response.
+    repeats until the model returns a final text response. Works with either
+    Anthropic or OpenAI models.
 
     Context management — context editing: as the loop accumulates tool
     results across turns, older ones are cleared server-side so a long
-    agentic run doesn't exhaust the context window.
+    agentic run doesn't exhaust the context window (Anthropic only).
     Returns (content, accumulated_usage, list_of_tool_invocations).
     """
     from tools import TOOLS, execute_tool
 
     mdl = model or MODEL
+    provider = provider_for_model(mdl)
+    require_key(provider)
     msgs = list(messages)
     _preview(trace, "Tools", mdl, list(messages), tools=[t["name"] for t in TOOLS])
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     invocations = []
 
-    # The control loop
+    if provider == "anthropic":
+        client = anthropic_client()
+        while True:
+            if mdl in CONTEXT_MGMT_MODELS:
+                response = client.beta.messages.create(
+                    betas=["context-management-2025-06-27"],
+                    model=mdl,
+                    max_tokens=MAX_TOKENS,
+                    system=SYSTEM_PROMPT,
+                    messages=msgs,
+                    tools=TOOLS,
+                    context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+                )
+            else:
+                response = client.messages.create(
+                    model=mdl, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=msgs, tools=TOOLS,
+                )
+            for k, v in _usage(response).items():
+                total_usage[k] += v
+
+            if response.stop_reason != "tool_use":
+                return _text(response), total_usage, invocations
+
+            msgs.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in response.content:
+                if block.type != "tool_use":
+                    continue
+                result = execute_tool(block.name, block.input)
+                invocations.append({"name": block.name, "args": block.input, "result": result})
+                tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": result})
+            msgs.append({"role": "user", "content": tool_results})
+
+    # OpenAI path
+    client = openai_client()
+    oa_tools = to_openai_tools(TOOLS)
+    oa_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + list(msgs)
     while True:
-        if mdl in CONTEXT_MGMT_MODELS:
-            response = client.beta.messages.create(
-                betas=["context-management-2025-06-27"],
-                model=mdl,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                messages=msgs,
-                tools=TOOLS,
-                context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
-            )
-        else:
-            response = client.messages.create(
-                model=mdl,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                messages=msgs,
-                tools=TOOLS,
-            )
-        for k, v in _usage(response).items():
+        response = client.chat.completions.create(
+            model=mdl, max_tokens=MAX_TOKENS, messages=oa_messages, tools=oa_tools,
+        )
+        for k, v in openai_usage(response).items():
             total_usage[k] += v
 
-        if response.stop_reason != "tool_use":
-            return _text(response), total_usage, invocations
+        choice = response.choices[0]
+        if choice.finish_reason != "tool_calls":
+            return openai_text(response), total_usage, invocations
 
-        # Append the assistant turn that contains the tool-use requests
-        msgs.append({"role": "assistant", "content": response.content})
-
-        # Execute every tool the model asked for; return all results together
-        tool_results = []
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
-            result = execute_tool(block.name, block.input)
-            invocations.append({"name": block.name, "args": block.input, "result": result})
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": result,
-            })
-        msgs.append({"role": "user", "content": tool_results})
+        oa_messages.append(choice.message)
+        for tc in choice.message.tool_calls:
+            import json
+            args = json.loads(tc.function.arguments or "{}")
+            result = execute_tool(tc.function.name, args)
+            invocations.append({"name": tc.function.name, "args": args, "result": result})
+            oa_messages.append({"role": "tool", "tool_call_id": tc.id, "content": str(result)})
 
 
 def llm_with_rag(user_message: str, history: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, str]:
@@ -184,13 +195,8 @@ def llm_with_rag(user_message: str, history: list[dict], model: str = None, trac
     )
     msgs = list(history) + [{"role": "user", "content": augmented}]
     _preview(trace, "RAG", mdl, msgs)
-    response = client.messages.create(
-        model=mdl,
-        max_tokens=MAX_TOKENS,
-        system=SYSTEM_PROMPT,
-        messages=msgs,
-    )
-    return _text(response), _usage(response), context
+    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, msgs)
+    return text, usage, context
 
 
 def llm_with_web_search(user_message: str, history: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, str]:
@@ -206,25 +212,22 @@ def llm_with_web_search(user_message: str, history: list[dict], model: str = Non
 
     mdl = model or MODEL
 
-    # Step 1 — live web search via Claude's server-side web_search tool.
-    # (Uses its own web-search-capable model regardless of the picker, since
-    # the web_search tool isn't available on every model, e.g. Haiku.)
+    # Step 1 — live web search via Claude's built-in web_search server tool.
+    # (Always uses Claude for this step regardless of the picker, since
+    # web_search is an Anthropic-only server tool not available on OpenAI or
+    # on every Claude model, e.g. Haiku.)
     search_context = run_web_search(user_message)
 
-    # Step 2 — synthesis: inject search results back into our regular LLM
+    # Step 2 — synthesis: inject search results back into our regular LLM,
+    # using whichever provider/model was picked.
     synthesis_prompt = (
         f"Live web search results:\n\n{search_context}\n\n"
         f"Using the above as context, answer: {user_message}"
     )
     msgs = list(history) + [{"role": "user", "content": synthesis_prompt}]
     _preview(trace, "Web Search", mdl, msgs, tools=["web_search (server-side, step 1)"])
-    response = client.messages.create(
-        model=mdl,
-        max_tokens=MAX_TOKENS,
-        system=SYSTEM_PROMPT,
-        messages=msgs,
-    )
-    return _text(response), _usage(response), search_context
+    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, msgs)
+    return text, usage, search_context
 
 
 def llm_agent(message: str, history: list[dict], tools_enabled: bool = False,
@@ -234,12 +237,15 @@ def llm_agent(message: str, history: list[dict], tools_enabled: bool = False,
     Combined 'Agent mode': hand the model every enabled capability at once —
     tools (get_datetime / calculate), web_search, and RAG context — in a single
     agentic loop. This is how a real agent composes the building blocks the
-    other modules demonstrate in isolation.
+    other modules demonstrate in isolation. Works with either Anthropic or
+    OpenAI models.
     Returns (text, accumulated_usage, tool_invocations, rag_context).
     """
     from tools import TOOLS as ALL_TOOLS, execute_tool
 
     mdl = model or MODEL
+    provider = provider_for_model(mdl)
+    require_key(provider)
 
     # Expose only the tools whose toggles are on
     wanted = set()
@@ -266,37 +272,59 @@ def llm_agent(message: str, history: list[dict], tools_enabled: bool = False,
 
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     invocations = []
-    use_cm = bool(tools) and mdl in CONTEXT_MGMT_MODELS
 
+    if provider == "anthropic":
+        client = anthropic_client()
+        use_cm = bool(tools) and mdl in CONTEXT_MGMT_MODELS
+        while True:
+            kwargs = dict(model=mdl, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=msgs)
+            if tools:
+                kwargs["tools"] = tools
+            if use_cm:
+                response = client.beta.messages.create(
+                    betas=["context-management-2025-06-27"],
+                    context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+                    **kwargs,
+                )
+            else:
+                response = client.messages.create(**kwargs)
+
+            for k, v in _usage(response).items():
+                total_usage[k] += v
+
+            if response.stop_reason != "tool_use":
+                return _text(response), total_usage, invocations, rag_context
+
+            msgs.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in response.content:
+                if block.type != "tool_use":
+                    continue
+                result = execute_tool(block.name, block.input)
+                invocations.append({"name": block.name, "args": block.input, "result": result})
+                tool_results.append({"type": "tool_result", "tool_use_id": block.id, "content": result})
+            msgs.append({"role": "user", "content": tool_results})
+
+    # OpenAI path
+    client = openai_client()
+    oa_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + list(msgs)
+    oa_tools = to_openai_tools(tools) if tools else None
     while True:
-        kwargs = dict(model=mdl, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=msgs)
-        if tools:
-            kwargs["tools"] = tools
-        if use_cm:
-            response = client.beta.messages.create(
-                betas=["context-management-2025-06-27"],
-                context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
-                **kwargs,
-            )
-        else:
-            response = client.messages.create(**kwargs)
-
-        for k, v in _usage(response).items():
+        kwargs = dict(model=mdl, max_tokens=MAX_TOKENS, messages=oa_messages)
+        if oa_tools:
+            kwargs["tools"] = oa_tools
+        response = client.chat.completions.create(**kwargs)
+        for k, v in openai_usage(response).items():
             total_usage[k] += v
 
-        if response.stop_reason != "tool_use":
-            return _text(response), total_usage, invocations, rag_context
+        choice = response.choices[0]
+        if choice.finish_reason != "tool_calls":
+            return openai_text(response), total_usage, invocations, rag_context
 
-        msgs.append({"role": "assistant", "content": response.content})
-        tool_results = []
-        for block in response.content:
-            if block.type != "tool_use":
-                continue
-            result = execute_tool(block.name, block.input)
-            invocations.append({"name": block.name, "args": block.input, "result": result})
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": result,
-            })
-        msgs.append({"role": "user", "content": tool_results})
+        oa_messages.append(choice.message)
+        for tc in choice.message.tool_calls:
+            import json
+            args = json.loads(tc.function.arguments or "{}")
+            result = execute_tool(tc.function.name, args)
+            invocations.append({"name": tc.function.name, "args": args, "result": result})
+            oa_messages.append({"role": "tool", "tool_call_id": tc.id, "content": str(result)})
