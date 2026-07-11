@@ -15,6 +15,23 @@
       <p>Building blocks of AI agents — step by step</p>
     </div>
     <div id="step-badge" class="step-badge stateless">STEP 1 — STATELESS LLM</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap">
+      Model
+      <select id="model-select" style="font-size:12px;font-weight:600;color:var(--text);background:var(--bg,#1e1e2e);border:1px solid var(--border);border-radius:8px;padding:5px 8px;cursor:pointer">
+        <optgroup label="Anthropic">
+          <option value="claude-sonnet-5">Sonnet 5 · $3/$15</option>
+          <option value="claude-opus-4-8">Opus 4.8 · $5/$25</option>
+          <option value="claude-haiku-4-5">Haiku 4.5 · $1/$5</option>
+        </optgroup>
+        <optgroup label="OpenAI">
+          <option value="gpt-4.1">GPT-4.1 · $2/$8</option>
+          <option value="gpt-4o">GPT-4o · $2.5/$10</option>
+          <option value="gpt-4.1-mini">GPT-4.1 Mini · $0.4/$1.6</option>
+        </optgroup>
+      </select>
+    </label>
+    <span id="key-warning" title="Add the missing API key to your .env file" style="display:none;font-size:12px;font-weight:700;color:var(--red,#f87171);background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.35);border-radius:8px;padding:5px 10px;white-space:nowrap">⚠️ No API key</span>
+    <span id="session-cost" title="Total spent this session" style="font-size:12px;font-weight:700;color:var(--green,#34d399);background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;padding:5px 10px;white-space:nowrap">$0.00000 · 0 calls</span>
     <a href="agent-definition.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">💡 What is an Agent? →</a>
     <a href="planning.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🧠 Planning →</a>
     <a href="agent.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🤖 Agent →</a>
@@ -80,7 +97,7 @@
             <span class="toggle-track"></span>
           </label>
         </div>
-        <div class="cap-desc">OpenAI <code>web_search_preview</code> fetches live results, then feeds them into our LLM.</div>
+        <div class="cap-desc">Claude's built-in <code>web_search</code> tool fetches live results, then feeds them into our LLM.</div>
         <div id="websearch-status" class="cap-status off">OFF</div>
       </div>
 
@@ -98,6 +115,22 @@
         <div class="cap-desc">Keyword-retrieval over in-memory employee data — no embeddings needed to get the idea.</div>
         <div id="rag-status" class="cap-status off">OFF</div>
       </div>
+
+      <!-- Agent mode — master switch: composes whichever capabilities above are on -->
+      <div class="capability-card" style="border-color:var(--accent);background:rgba(139,92,246,0.06)">
+        <div class="cap-top">
+          <div class="cap-title-row">
+            <span class="cap-icon">🤖</span>
+            <span class="cap-title">Agent Mode</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="agent-toggle" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="cap-desc">Combine the capabilities above into one agentic loop.</div>
+        <div id="agent-status" class="cap-status off">OFF</div>
+      </div>
     </aside>
 
     <!-- ── Main ── -->
@@ -109,6 +142,8 @@
           <strong>Stateless mode:</strong>
           Each message is an independent API call — no history is sent.
         </span>
+        <button id="export-btn" title="Download the conversation as Markdown">⬇ Export</button>
+        <button id="clear-btn" title="Clear the conversation">🗑 Clear</button>
       </div>
 
       <div id="chat">
@@ -117,6 +152,8 @@
           <p>Send a message to make a stateless LLM call.<br/>Toggle Memory in the sidebar to see the difference.</p>
         </div>
       </div>
+
+      <div id="prompt-chips" class="prompt-chips"></div>
 
       <div class="input-area">
         <textarea id="message-input" placeholder="Type a message…" autofocus></textarea>

@@ -22,12 +22,17 @@ function loadingDots() {
 }
 
 async function callPlan(task, mode) {
+  const model = document.getElementById('model-select').value;
   const res = await fetch('/plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task, mode }),
+    body: JSON.stringify({ task, mode, model }),
   });
-  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  if (!res.ok) {
+    let msg = `Server error ${res.status}`;
+    try { const e = await res.json(); if (e && e.error) msg = e.error; } catch (_) {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -164,3 +169,26 @@ function renderReact(steps) {
       </div>
     </div>`).join('');
 }
+
+// ── Provider API-key warning: fetch /config and warn if the selected
+// provider's key isn't set in .env ────────────────────────────────────────
+(function () {
+  const modelSelectEl = document.getElementById('model-select');
+  const keyWarningEl  = document.getElementById('key-warning');
+  if (!modelSelectEl || !keyWarningEl) return;
+
+  function updateKeyWarning(keyStatus) {
+    const opt = modelSelectEl.selectedOptions[0];
+    const provider = opt && opt.closest('optgroup') ? opt.closest('optgroup').label.toLowerCase() : null;
+    const missing = provider && keyStatus && keyStatus[provider] === false;
+    keyWarningEl.style.display = missing ? 'inline-block' : 'none';
+  }
+
+  fetch('/config')
+    .then((r) => r.json())
+    .then((cfg) => {
+      updateKeyWarning(cfg.keys);
+      modelSelectEl.addEventListener('change', () => updateKeyWarning(cfg.keys));
+    })
+    .catch(() => { /* /config unreachable — silently skip the warning banner */ });
+})();

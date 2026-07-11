@@ -29,6 +29,11 @@ document.querySelectorAll('.fw-back-btn').forEach(btn => {
   btn.addEventListener('click', showTOC);
 });
 
+// Decision-guide cards jump to their framework's section
+document.querySelectorAll('[data-goto]').forEach(el => {
+  el.addEventListener('click', () => showScreen(el.dataset.goto));
+});
+
 // Browser back / forward support
 window.addEventListener('popstate', () => {
   const h = location.hash.slice(1);

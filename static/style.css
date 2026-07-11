@@ -567,3 +567,116 @@ header {
 #send-btn:hover:not(:disabled) { background: var(--accent-light); }
 #send-btn:active:not(:disabled) { transform: scale(0.95); }
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Peek under the hood (request preview) ───────────────────────── */
+.peek { margin-top: 8px; font-size: 12px; }
+.peek summary { cursor: pointer; color: var(--text-muted); user-select: none; padding: 4px 0; }
+.peek summary:hover { color: var(--text); }
+.peek-json {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* ── Example-prompt chips ─────────────────────────────────────────── */
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 4px 10px;
+}
+.prompt-chips:empty { display: none; }
+.chip {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface, #1a1a24);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.08);
+}
+.elapsed-timer { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Clear-conversation button ────────────────────────────────────── */
+#clear-btn, #export-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  opacity: 0.75;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+#export-btn { margin-left: auto; }
+#clear-btn:hover, #export-btn:hover { opacity: 1; }
+
+/* ── Copy buttons (answer + peek JSON) ────────────────────────────── */
+.bubble.ai { position: relative; }
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface, #1a1a24);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+.bubble.ai:hover .copy-btn { opacity: 0.85; }
+.copy-btn:hover { color: var(--text); border-color: var(--accent); opacity: 1; }
+.peek { position: relative; }
+.peek-copy {
+  position: absolute;
+  top: 34px;
+  right: 10px;
+}
+
+/* Hide the banner ⚡ text in Agent mode (the step badge already lists the caps) */
+#mode-banner.agent-collapsed .icon,
+#mode-banner.agent-collapsed #mode-text { display: none; }
+
+/* ── Peek JSON syntax highlighting ────────────────────────────────── */
+.peek-json .tok-key  { color: #93c5fd; }
+.peek-json .tok-str  { color: #86efac; }
+.peek-json .tok-num  { color: #fbbf24; }
+.peek-json .tok-bool { color: #c4b5fd; }
+
+/* ── Retry button (on failed calls) ───────────────────────────────── */
+.retry-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface, #1a1a24);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.retry-btn:hover { background: rgba(139, 92, 246, 0.12); }
+
+/* ── Per-call timestamp ───────────────────────────────────────────── */
+.call-time { color: var(--text-muted); font-weight: 400; font-size: 11px; margin-left: 6px; }

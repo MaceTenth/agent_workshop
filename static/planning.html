@@ -18,6 +18,22 @@
     </div>
     <a href="/agent.html" class="back-link" style="margin-left:auto">🤖 Agent →</a>
     <a href="/frameworks.html" class="back-link">🔗 Frameworks →</a>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap">
+      Model
+      <select id="model-select" style="font-size:12px;font-weight:600;color:var(--text);background:var(--bg,#1e1e2e);border:1px solid var(--border);border-radius:8px;padding:5px 8px;cursor:pointer">
+        <optgroup label="Anthropic">
+          <option value="claude-sonnet-5">Sonnet 5</option>
+          <option value="claude-opus-4-8">Opus 4.8</option>
+          <option value="claude-haiku-4-5">Haiku 4.5</option>
+        </optgroup>
+        <optgroup label="OpenAI">
+          <option value="gpt-4.1">GPT-4.1</option>
+          <option value="gpt-4o">GPT-4o</option>
+          <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+        </optgroup>
+      </select>
+    </label>
+    <span id="key-warning" style="display:none;font-size:12px;font-weight:700;color:#f87171;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.35);border-radius:8px;padding:5px 10px;white-space:nowrap">⚠️ No API key</span>
   </header>
 
   <!-- ── Tab navigation ── -->

@@ -28,8 +28,11 @@ const agentOutcome = document.getElementById('agent-outcome');
 
 let isRunning = false;
 
+// Global speed factor — lower = faster simulation (~0.45 ≈ 4-5s total)
+const SPEED = 0.45;
+
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms * SPEED));
 }
 
 function appendLog(element, text) {
@@ -42,6 +45,7 @@ function appendLog(element, text) {
 
 // Particle Animation Logic along SVG Path
 function animateParticle(particle, pathNode, duration) {
+  duration = duration * SPEED;
   return new Promise(resolve => {
     particle.classList.remove('hidden');
     const pathLength = pathNode.getTotalLength();
@@ -52,8 +56,10 @@ function animateParticle(particle, pathNode, duration) {
       const progress = Math.min(elapsed / duration, 1);
       
       const point = pathNode.getPointAtLength(progress * pathLength);
-      particle.setAttribute('cx', point.x);
-      particle.setAttribute('cy', point.y);
+      // Move via transform (GPU-composited) rather than cx/cy so the
+      // drop-shadow glow is rasterized once instead of recomputed each
+      // frame — this removes the flicker/aliasing while it travels.
+      particle.setAttribute('transform', `translate(${point.x} ${point.y})`);
 
       if (progress < 1) {
         requestAnimationFrame(step);
@@ -160,7 +166,7 @@ async function simulateCode() {
 async function simulateAgent() {
   logAgent.innerHTML = "";
   
-  appendLog(logAgent, "[ITERATION 1] Receiving ambiguous goal...");
+  appendLog(logAgent, "Step 1 · Goal received — open-ended, solution not known in advance.");
   agentInput.classList.add('active');
   await delay(400);
   
@@ -170,7 +176,7 @@ async function simulateAgent() {
   
   // Core decides
   agentCore.classList.add('active');
-  appendLog(logAgent, "LLM Core is thinking based on available tools...");
+  appendLog(logAgent, "Step 2 · LLM reasons about the goal and picks a tool.");
   await delay(1200);
   agentCore.classList.remove('active');
 
@@ -178,37 +184,37 @@ async function simulateAgent() {
   const isBranchA = Math.random() > 0.5;
   
   if (isBranchA) {
-    appendLog(logAgent, "Decision: Need to find current information (Web Search)");
+    appendLog(logAgent, "Decision · Needs current info → calls the Web Search tool.");
     pathBranchA.classList.remove('path-hidden');
     pathBranchA.classList.add('active-path');
     
     await animateParticle(agentParticle, pathBranchA, 800);
     agentOptA.classList.add('chosen', 'active');
-    appendLog(logAgent, "Result: Successfully fetched web data.");
+    appendLog(logAgent, "Observation · Web Search returned live results.");
     await delay(600);
     agentOptA.classList.remove('active');
     
-    appendLog(logAgent, "[ITERATION 2] Routing to Synthesize...");
+    appendLog(logAgent, "Step 3 · LLM reviews the result — enough to answer.");
     pathFinalA.classList.remove('path-hidden');
     await animateParticle(agentParticle, pathFinalA, 800);
     
   } else {
-    appendLog(logAgent, "Decision: Goal requires mathematical resolution (Calculate)");
+    appendLog(logAgent, "Decision · Needs a computation → calls the Calculate tool.");
     pathBranchB.classList.remove('path-hidden');
     pathBranchB.classList.add('active-path');
     
     await animateParticle(agentParticle, pathBranchB, 800);
     agentOptB.classList.add('chosen', 'active');
-    appendLog(logAgent, "Result: Computed integers successfully.");
+    appendLog(logAgent, "Observation · Calculate returned a result.");
     await delay(600);
     agentOptB.classList.remove('active');
     
-    appendLog(logAgent, "[ITERATION 2] Routing to Synthesize...");
+    appendLog(logAgent, "Step 3 · LLM reviews the result — enough to answer.");
     pathFinalB.classList.remove('path-hidden');
     await animateParticle(agentParticle, pathFinalB, 800);
   }
 
-  appendLog(logAgent, "Agent has satisfied constraints. Emitting completion...");
+  appendLog(logAgent, "Done · Answer produced. The tool it used was chosen at runtime, not fixed.");
   agentOutcome.classList.add('active');
 }
 

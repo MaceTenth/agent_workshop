@@ -6,7 +6,7 @@
   <title>Agent Workshop — Agent in Action</title>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/planning.css" />
-  <link rel="stylesheet" href="/agent.css" />
+  <link rel="stylesheet" href="/agent.css?v=2" />
 </head>
 <body>
 
@@ -17,7 +17,8 @@
       <h1>Agent in Action</h1>
       <p>Planning → Execution → Synthesis → Verification — all in one loop</p>
     </div>
-    <a href="/frameworks.html" class="back-link" style="margin-left:auto">🔗 Frameworks →</a>
+    <span id="key-warning" style="display:none;font-size:12px;font-weight:700;color:#f87171;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.35);border-radius:8px;padding:5px 10px;white-space:nowrap;margin-left:auto">⚠️ No API key</span>
+    <a href="/frameworks.html" class="back-link">🔗 Frameworks →</a>
   </header>
 
   <!-- ── Input bar ── -->
@@ -39,6 +40,22 @@
           <option value="conservative">Conservative</option>
           <option value="moderate" selected>Moderate</option>
           <option value="aggressive">Aggressive</option>
+        </select>
+      </div>
+
+      <div class="input-col">
+        <span class="agent-input-label">Model</span>
+        <select id="model-select" class="risk-select">
+          <optgroup label="Anthropic">
+            <option value="claude-sonnet-5">Sonnet 5</option>
+            <option value="claude-opus-4-8">Opus 4.8</option>
+            <option value="claude-haiku-4-5">Haiku 4.5</option>
+          </optgroup>
+          <optgroup label="OpenAI">
+            <option value="gpt-4.1">GPT-4.1</option>
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+          </optgroup>
         </select>
       </div>
 
@@ -147,6 +164,6 @@
     </div>
   </main>
 
-  <script src="/agent.js"></script>
+  <script src="/agent.js?v=2"></script>
 </body>
 </html>

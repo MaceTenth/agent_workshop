@@ -6,7 +6,7 @@
   <title>Agent Workshop — Frameworks</title>
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/planning.css" />
-  <link rel="stylesheet" href="/frameworks.css" />
+  <link rel="stylesheet" href="/frameworks.css?v=5" />
 </head>
 <body>
 
@@ -15,7 +15,7 @@
     <a href="/agent.html" class="back-link">← Agent</a>
     <div class="header-icon" style="background:#7c3aed">🔗</div>
     <div class="header-titles">
-      <h1>Frameworks: LangChain &amp; CrewAI</h1>
+      <h1>Frameworks: LangChain, CrewAI, LangGraph, Pydantic AI &amp; LlamaIndex</h1>
       <p>Why abstractions matter — and what they solve</p>
     </div>
   </header>
@@ -47,6 +47,42 @@
         <div class="fw-toc-body">
           <div class="fw-toc-title">CrewAI</div>
           <div class="fw-toc-desc">Role-based multi-agent teams — Agents, Tasks, and Crews with automatic context handoff.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="langgraph">
+        <div class="fw-toc-icon">🕸️</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">LangGraph</div>
+          <div class="fw-toc-desc">Agents as state graphs — nodes, edges, and shared state give you loops, branching, and persistence for free.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="pydanticai">
+        <div class="fw-toc-icon">🛡️</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">Pydantic AI</div>
+          <div class="fw-toc-desc">Type-safe agents — validated structured output, tools from typed functions, and injected dependencies.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="llamaindex">
+        <div class="fw-toc-icon">🦙</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">LlamaIndex</div>
+          <div class="fw-toc-desc">RAG over your data — chunking, embedding, indexing, and retrieval in a few lines, plus data agents.</div>
+        </div>
+        <div class="fw-toc-arrow">→</div>
+      </button>
+
+      <button class="fw-toc-card" data-screen="decision">
+        <div class="fw-toc-icon">📐</div>
+        <div class="fw-toc-body">
+          <div class="fw-toc-title">Decision Guide</div>
+          <div class="fw-toc-desc">Which framework for what — 18 quick "you need X → reach for Y" cases, one click to each.</div>
         </div>
         <div class="fw-toc-arrow">→</div>
       </button>
@@ -199,21 +235,22 @@
     user   = <span class="str">f"Explain </span><span class="interp">{topic}</span><span class="str"> assuming a </span><span class="interp">{level}</span><span class="str"> audience."</span>
 
     <span class="cm"># Duplicated every time. No reuse. Easy to break.</span>
-    response = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    response = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
+        system=system,
         messages=[
-            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: system},
-            {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: user},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: user},
         ]
     )
-    <span class="kw">return</span> response.choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> response.content[<span class="num">0</span>].text
 
 <span class="cm"># Every call site must know the template structure</span>
 result = ask_llm(<span class="str">"machine learning"</span>, <span class="str">"beginner"</span>)</pre>
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain</div>
-          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+          <pre class="code-block"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
 
 <span class="cm"># Defined once, reused everywhere, versioned in Hub</span>
@@ -222,7 +259,7 @@ prompt = ChatPromptTemplate.from_messages([
     (<span class="str">"human"</span>,  <span class="str">"Explain {topic} assuming a {level} audience."</span>),
 ])
 
-llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm   = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 chain = prompt | llm   <span class="cm"># LCEL pipe operator</span>
 
 <span class="cm"># Clean call site — just pass the variables</span>
@@ -238,18 +275,20 @@ result = chain.invoke({<span class="str">"topic"</span>: <span class="str">"mach
 <span class="cm"># Each step must manually thread state to the next</span>
 
 <span class="kw">def</span> <span class="fn">summarise</span>(text):
-    r = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    r = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
         messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">f"Summarise: </span><span class="interp">{text}</span><span class="str">"</span>}]
     )
-    <span class="kw">return</span> r.choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> r.content[<span class="num">0</span>].text
 
 <span class="kw">def</span> <span class="fn">translate_to_french</span>(text):
-    r = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    r = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
         messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">f"Translate to French: </span><span class="interp">{text}</span><span class="str">"</span>}]
     )
-    <span class="kw">return</span> r.choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> r.content[<span class="num">0</span>].text
 
 <span class="cm"># Manually chained — fragile, verbose, hard to swap steps</span>
 summary   = summarise(long_article)
@@ -257,11 +296,11 @@ french    = translate_to_french(summary)</pre>
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain (LCEL)</div>
-          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+          <pre class="code-block"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
 <span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
 
-llm    = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm    = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 parser = StrOutputParser()
 
 summarise_chain = (
@@ -288,30 +327,28 @@ result = pipeline.invoke({<span class="str">"text"</span>: long_article})</pre>
           <div class="code-header pain">😤 Raw Python (our agentic loop)</div>
           <pre class="code-block"><span class="cm"># tools.py — manual schema definition</span>
 TOOLS = [{
-    <span class="str">"type"</span>: <span class="str">"function"</span>,
-    <span class="str">"function"</span>: {
-        <span class="str">"name"</span>: <span class="str">"get_datetime"</span>,
-        <span class="str">"description"</span>: <span class="str">"Returns current date and time"</span>,
-        <span class="str">"parameters"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {}}
-    }
+    <span class="str">"name"</span>: <span class="str">"get_datetime"</span>,
+    <span class="str">"description"</span>: <span class="str">"Returns current date and time"</span>,
+    <span class="str">"input_schema"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>, <span class="str">"properties"</span>: {}}
 }]
 
 <span class="cm"># llm.py — manual while-loop with tool dispatch</span>
 <span class="kw">while</span> <span class="kw">True</span>:
-    response = client.chat.completions.create(
-        model=MODEL, messages=msgs,
-        tools=TOOLS, tool_choice=<span class="str">"auto"</span>
+    response = client.messages.create(
+        model=MODEL, max_tokens=<span class="num">1024</span>,
+        messages=msgs, tools=TOOLS
     )
-    <span class="kw">if not</span> response.choices[<span class="num">0</span>].message.tool_calls:
+    <span class="kw">if</span> response.stop_reason != <span class="str">"tool_use"</span>:
         <span class="kw">break</span>
-    <span class="kw">for</span> tc <span class="kw">in</span> response.choices[<span class="num">0</span>].message.tool_calls:
-        result = execute_tool(tc.function.name, ...)
-        msgs.append({<span class="str">"role"</span>: <span class="str">"tool"</span>, <span class="str">"content"</span>: result, ...})</pre>
+    <span class="kw">for</span> block <span class="kw">in</span> response.content:
+        <span class="kw">if</span> block.type != <span class="str">"tool_use"</span>: <span class="kw">continue</span>
+        result = execute_tool(block.name, block.input)
+        msgs.append({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: [{...}]})</pre>
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain</div>
           <pre class="code-block"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
-<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> langchain.agents <span class="kw">import</span> AgentExecutor, create_tool_calling_agent
 <span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
 
@@ -322,7 +359,7 @@ TOOLS = [{
     <span class="kw">from</span> datetime <span class="kw">import</span> datetime
     <span class="kw">return</span> datetime.now().isoformat()
 
-llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm   = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 agent = create_tool_calling_agent(llm, [get_datetime], prompt)
 
 <span class="cm"># Loop, tool dispatch, error handling — all handled</span>
@@ -340,11 +377,12 @@ result   = executor.invoke({<span class="str">"input"</span>: <span class="str">
 <span class="kw">def</span> <span class="fn">extract_person</span>(text):
     prompt = (<span class="str">f"Extract the person's name and age from: </span><span class="interp">{text}</span><span class="str">\n"</span>
               <span class="str">"Return only valid JSON: {\"name\": ..., \"age\": ...}"</span>)
-    response = client.chat.completions.create(
-        model=<span class="str">"gpt-4o-mini"</span>,
+    response = client.messages.create(
+        model=<span class="str">"claude-sonnet-5"</span>,
+        max_tokens=<span class="num">1024</span>,
         messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}]
     )
-    raw = response.choices[<span class="num">0</span>].message.content
+    raw = response.content[<span class="num">0</span>].text
 
     <span class="cm"># Model sometimes wraps in markdown fences — strip manually</span>
     raw = raw.strip(<span class="str">"`"</span>).lstrip(<span class="str">"json"</span>).strip()
@@ -355,7 +393,7 @@ result   = executor.invoke({<span class="str">"input"</span>: <span class="str">
         </div>
         <div class="code-col">
           <div class="code-header solve">✅ With LangChain + Pydantic</div>
-          <pre class="code-block"><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+          <pre class="code-block"><span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
 <span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
 
 <span class="cm"># Define your schema — same Pydantic you already use</span>
@@ -363,7 +401,7 @@ result   = executor.invoke({<span class="str">"input"</span>: <span class="str">
     name: <span class="ty">str</span>
     age:  <span class="ty">int</span>
 
-llm      = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>)
+llm      = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>)
 extractor = llm.with_structured_output(Person)
 
 <span class="cm"># Always returns a Person object — never raw JSON strings,</span>
@@ -528,6 +566,273 @@ review_task = Task(
     <!-- ─────────────────────────────────────────────────── -->
     <!-- SCREEN 4: Tradeoffs                               -->
     <!-- ─────────────────────────────────────────────────── -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: LangGraph                                 -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-langgraph">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">LangGraph — agents as state graphs</div>
+        <div class="lesson-desc">
+          LangGraph models an agent as a <strong>graph</strong>: <strong>nodes</strong> do the work,
+          <strong>edges</strong> decide what runs next, and a shared <strong>state</strong> flows through.
+          You get loops, branching, persistence, and human-in-the-loop for free — the control flow you'd
+          otherwise hand-roll with <code>while</code> loops and <code>if</code> statements.
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="lg-graph">State Graph</button>
+        <button class="ex-btn" data-ex="lg-branch">Conditional Routing</button>
+      </div>
+
+      <!-- State Graph -->
+      <div class="code-compare active" id="ex-lg-graph">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># Hand-roll the loop: call, check for tools, run, feed back, repeat</span>
+messages = [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: task}]
+<span class="kw">while</span> <span class="kw">True</span>:
+    resp = client.messages.create(model=MODEL, messages=messages, tools=TOOLS)
+    <span class="kw">if</span> resp.stop_reason != <span class="str">"tool_use"</span>:
+        <span class="kw">break</span>
+    messages.append({<span class="str">"role"</span>: <span class="str">"assistant"</span>, <span class="str">"content"</span>: resp.content})
+    results = [run_tool(b) <span class="kw">for</span> b <span class="kw">in</span> resp.content <span class="kw">if</span> b.type == <span class="str">"tool_use"</span>]
+    messages.append({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: results})
+<span class="cm"># No persistence, no branching, no pause &amp; resume</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangGraph</div>
+          <pre class="code-block"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+<span class="kw">from</span> langchain_anthropic <span class="kw">import</span> ChatAnthropic
+
+llm = ChatAnthropic(model=<span class="str">"claude-sonnet-5"</span>).bind_tools(tools)
+
+<span class="kw">def</span> <span class="fn">call_model</span>(state):
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [llm.invoke(state[<span class="str">"messages"</span>])]}
+
+graph = StateGraph(State)
+graph.add_node(<span class="str">"model"</span>, call_model)
+graph.add_node(<span class="str">"tools"</span>, ToolNode(tools))
+graph.add_edge(START, <span class="str">"model"</span>)
+graph.add_conditional_edges(<span class="str">"model"</span>, tools_condition)  <span class="cm"># → tools or END</span>
+graph.add_edge(<span class="str">"tools"</span>, <span class="str">"model"</span>)                        <span class="cm"># loop back</span>
+app = graph.compile(checkpointer=MemorySaver())         <span class="cm"># persistence, free</span>
+result = app.invoke({<span class="str">"messages"</span>: [(<span class="str">"user"</span>, task)]})</pre>
+        </div>
+      </div>
+
+      <!-- Conditional Routing -->
+      <div class="code-compare" id="ex-lg-branch">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># Branching logic tangled into if/elif inside your loop</span>
+intent = classify(user_msg)
+<span class="kw">if</span> <span class="str">"refund"</span> <span class="kw">in</span> intent:
+    handle_refund(user_msg)      <span class="cm"># a separate code path</span>
+<span class="kw">elif</span> <span class="str">"status"</span> <span class="kw">in</span> intent:
+    check_status(user_msg)
+<span class="kw">else</span>:
+    fallback(user_msg)
+<span class="cm"># Adding a branch means editing the loop — no shared</span>
+<span class="cm"># state, no diagram, no resume-from-here</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LangGraph</div>
+          <pre class="code-block"><span class="kw">def</span> <span class="fn">route</span>(state) -> <span class="ty">str</span>:
+    intent = state[<span class="str">"intent"</span>]
+    <span class="kw">return</span> intent <span class="kw">if</span> intent <span class="kw">in</span> (<span class="str">"refund"</span>, <span class="str">"status"</span>) <span class="kw">else</span> <span class="str">"fallback"</span>
+
+graph.add_conditional_edges(
+    <span class="str">"classify"</span>,
+    route,                        <span class="cm"># returns the next node's name</span>
+    {<span class="str">"refund"</span>: <span class="str">"refund_node"</span>,
+     <span class="str">"status"</span>: <span class="str">"status_node"</span>,
+     <span class="str">"fallback"</span>: <span class="str">"fallback_node"</span>},
+)
+<span class="cm"># Each branch is a node. The graph is declarative, can be</span>
+<span class="cm"># drawn — app.get_graph().draw_mermaid() — and resumed mid-run.</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: Pydantic AI                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-pydanticai">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">Pydantic AI — type-safe agents</div>
+        <div class="lesson-desc">
+          Pydantic AI brings the <strong>Pydantic</strong> validation you already use to agents:
+          declare a <strong>typed output</strong> and the response is parsed and validated into a real
+          object, register <strong>tools</strong> as plain typed functions, and inject typed
+          <strong>dependencies</strong>. It's model-agnostic — the same agent runs on Claude.
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="pa-typed">Typed Output</button>
+        <button class="ex-btn" data-ex="pa-tools">Tools &amp; Deps</button>
+      </div>
+
+      <!-- Typed Output -->
+      <div class="code-compare active" id="ex-pa-typed">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="kw">import</span> json
+<span class="cm"># Ask for JSON, then hope, strip, parse, and validate by hand</span>
+prompt = <span class="str">f"Extract name and age from: </span><span class="interp">{text}</span><span class="str">\nReturn JSON only."</span>
+raw = simple_llm_call(prompt)
+raw = raw.strip(<span class="str">"`"</span>).lstrip(<span class="str">"json"</span>).strip()   <span class="cm"># strip markdown fences</span>
+<span class="kw">try</span>:
+    data = json.loads(raw)                     <span class="cm"># might throw</span>
+    name, age = data[<span class="str">"name"</span>], <span class="ty">int</span>(data[<span class="str">"age"</span>])  <span class="cm"># KeyError? ValueError?</span>
+<span class="kw">except</span> Exception:
+    ...  <span class="cm"># now what?</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With Pydantic AI</div>
+          <pre class="code-block"><span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+<span class="kw">from</span> pydantic_ai <span class="kw">import</span> Agent
+
+<span class="kw">class</span> <span class="ty">Person</span>(BaseModel):
+    name: <span class="ty">str</span>
+    age:  <span class="ty">int</span>
+
+agent = Agent(<span class="str">"anthropic:claude-sonnet-5"</span>, output_type=Person)
+
+result = agent.run_sync(<span class="str">f"Extract the person from: </span><span class="interp">{text}</span><span class="str">"</span>)
+person = result.output          <span class="cm"># ← a validated Person, guaranteed</span>
+<span class="fn">print</span>(person.name, person.age)  <span class="cm"># typed attributes, zero parsing</span></pre>
+        </div>
+      </div>
+
+      <!-- Tools & Deps -->
+      <div class="code-compare" id="ex-pa-tools">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># A tool = hand-written JSON schema + a dispatch fn + arg parsing</span>
+TOOLS = [{<span class="str">"name"</span>: <span class="str">"get_weather"</span>,
+          <span class="str">"input_schema"</span>: {<span class="str">"type"</span>: <span class="str">"object"</span>,
+              <span class="str">"properties"</span>: {<span class="str">"city"</span>: {<span class="str">"type"</span>: <span class="str">"string"</span>}},
+              <span class="str">"required"</span>: [<span class="str">"city"</span>]}}]
+
+<span class="kw">def</span> <span class="fn">dispatch</span>(name, args):
+    <span class="kw">if</span> name == <span class="str">"get_weather"</span>:
+        <span class="kw">return</span> weather_api(args[<span class="str">"city"</span>])   <span class="cm"># you validate args yourself</span>
+<span class="cm"># ...plus the whole while-loop to feed results back</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With Pydantic AI</div>
+          <pre class="code-block"><span class="kw">from</span> pydantic_ai <span class="kw">import</span> Agent, RunContext
+
+agent = Agent(<span class="str">"anthropic:claude-sonnet-5"</span>, deps_type=WeatherClient)
+
+<span class="dec">@agent.tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(ctx: RunContext[WeatherClient], city: <span class="ty">str</span>) -> <span class="ty">str</span>:
+    <span class="str">"Get the current weather for a city."</span>
+    <span class="kw">return</span> ctx.deps.lookup(city)     <span class="cm"># typed deps injected</span>
+
+<span class="cm"># Schema is generated from the signature + docstring; the tool</span>
+<span class="cm"># loop, arg validation, and result feedback are all automatic.</span>
+result = agent.run_sync(<span class="str">"What's the weather in Paris?"</span>, deps=client)</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 4: Tradeoffs                               -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: LlamaIndex                                -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-llamaindex">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">LlamaIndex — RAG over your data</div>
+        <div class="lesson-desc">
+          LlamaIndex is the <strong>data framework</strong> for LLM apps: point it at your documents and it
+          handles <strong>chunking, embedding, indexing, and retrieval</strong>, then answers questions grounded
+          in your data. What the workshop's RAG module does by hand — retrieve → augment → generate — LlamaIndex
+          does in a few lines, with real vector search.
+        </div>
+      </div>
+
+      <div class="example-selector" style="margin-top:8px">
+        <button class="ex-btn active" data-ex="li-rag">RAG Pipeline</button>
+        <button class="ex-btn" data-ex="li-agent">Data Agent</button>
+      </div>
+
+      <!-- RAG Pipeline -->
+      <div class="code-compare active" id="ex-li-rag">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># You wire up every step of RAG yourself</span>
+docs   = load_files(<span class="str">"./data"</span>)                      <span class="cm"># read + parse</span>
+chunks = [c <span class="kw">for</span> d <span class="kw">in</span> docs <span class="kw">for</span> c <span class="kw">in</span> split(d, 500)]  <span class="cm"># chunk</span>
+store  = FaissIndex([embed(c) <span class="kw">for</span> c <span class="kw">in</span> chunks])       <span class="cm"># embed + store</span>
+
+<span class="kw">def</span> <span class="fn">answer</span>(question):
+    hits    = store.search(embed(question), top_k=3)   <span class="cm"># retrieve</span>
+    context = <span class="str">"\n"</span>.join(chunks[i] <span class="kw">for</span> i <span class="kw">in</span> hits)     <span class="cm"># stuff</span>
+    <span class="kw">return</span> simple_llm_call(<span class="str">f"Context:\n</span><span class="interp">{context}</span><span class="str">\n\nQ: </span><span class="interp">{question}</span><span class="str">"</span>)
+<span class="cm"># You own chunking, embeddings, storage, retrieval, and the prompt</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LlamaIndex</div>
+          <pre class="code-block"><span class="kw">from</span> llama_index.core <span class="kw">import</span> VectorStoreIndex, SimpleDirectoryReader, Settings
+<span class="kw">from</span> llama_index.llms.anthropic <span class="kw">import</span> Anthropic
+
+Settings.llm = Anthropic(model=<span class="str">"claude-sonnet-5"</span>)
+
+docs  = SimpleDirectoryReader(<span class="str">"./data"</span>).load_data()   <span class="cm"># read + parse</span>
+index = VectorStoreIndex.from_documents(docs)          <span class="cm"># chunk + embed + store</span>
+query = index.as_query_engine(similarity_top_k=3)      <span class="cm"># retrieval + prompt built in</span>
+
+answer = query.query(<span class="str">"What were Q3 revenues?"</span>)
+<span class="cm"># Chunking, embeddings, the vector store, retrieval, and the</span>
+<span class="cm"># grounded prompt are all handled — swap the store or top_k with one arg</span></pre>
+        </div>
+      </div>
+
+      <!-- Data Agent -->
+      <div class="code-compare" id="ex-li-agent">
+        <div class="code-col">
+          <div class="code-header pain">😤 Raw Python</div>
+          <pre class="code-block"><span class="cm"># To let the model DECIDE when to search your docs, you</span>
+<span class="cm"># hand-build a tool + the whole agent loop around your RAG</span>
+<span class="kw">def</span> <span class="fn">search_docs</span>(query):
+    <span class="kw">return</span> retrieve_and_stuff(query)   <span class="cm"># your RAG from above</span>
+
+TOOLS = [{<span class="str">"name"</span>: <span class="str">"search_docs"</span>, <span class="str">"input_schema"</span>: {...}}]
+<span class="cm"># ...then the manual while-loop: call, run tool, feed back, repeat.</span>
+<span class="cm"># Reasoning across multiple indexes? That's all on you.</span></pre>
+        </div>
+        <div class="code-col">
+          <div class="code-header solve">✅ With LlamaIndex</div>
+          <pre class="code-block"><span class="kw">from</span> llama_index.core.tools <span class="kw">import</span> QueryEngineTool
+<span class="kw">from</span> llama_index.core.agent.workflow <span class="kw">import</span> ReActAgent
+
+<span class="cm"># Wrap any index as a tool the agent can choose to call</span>
+reports = QueryEngineTool.from_defaults(
+    query_engine=index.as_query_engine(),
+    name=<span class="str">"financial_reports"</span>,
+    description=<span class="str">"Answers questions about the company's filings."</span>,
+)
+
+agent  = ReActAgent(tools=[reports], llm=Anthropic(model=<span class="str">"claude-sonnet-5"</span>))
+answer = <span class="kw">await</span> agent.run(<span class="str">"Compare Q3 revenue to the same quarter last year."</span>)
+<span class="cm"># The agent reasons, calls the right index, and loops — no glue code.</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN 4: Tradeoffs                               -->
+    <!-- ─────────────────────────────────────────────────── -->
     <section class="lesson-section" id="lesson-tradeoffs">
       <button class="fw-back-btn">← All Topics</button>
       <div class="lesson-intro">
@@ -610,34 +915,75 @@ review_task = Task(
         </div>
 
       </div>
+    </section>
 
-      <div class="decision-guide">
-        <div class="decision-title">📐 Quick decision guide</div>
-        <table class="decision-table">
-          <thead>
-            <tr>
-              <th>You need…</th>
-              <th>Reach for…</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Quick LLM demo / learning</td>          <td><span class="dt-raw">Raw Python</span></td></tr>
-            <tr><td>Structured output / Pydantic models</td> <td><span class="dt-lc">LangChain</span></td></tr>
-            <tr><td>RAG with vector stores</td>              <td><span class="dt-lc">LangChain</span></td></tr>
-            <tr><td>Composable multi-step pipelines</td>     <td><span class="dt-lc">LangChain LCEL</span></td></tr>
-            <tr><td>150+ source integrations</td>            <td><span class="dt-lc">LangChain</span></td></tr>
-            <tr><td>Team of specialised agents</td>          <td><span class="dt-crew">CrewAI</span></td></tr>
-            <tr><td>Multi-agent with task handoffs</td>      <td><span class="dt-crew">CrewAI</span></td></tr>
-            <tr><td>Research + write + review pipeline</td>  <td><span class="dt-crew">CrewAI</span></td></tr>
-            <tr><td>Max control, min deps</td>               <td><span class="dt-raw">Raw Python</span></td></tr>
-          </tbody>
-        </table>
+    <!-- ─────────────────────────────────────────────────── -->
+    <!-- SCREEN: Decision Guide                             -->
+    <!-- ─────────────────────────────────────────────────── -->
+    <section class="lesson-section" id="lesson-decision">
+      <button class="fw-back-btn">← All Topics</button>
+      <div class="lesson-intro">
+        <div class="lesson-title">Decision guide — which framework for what</div>
+        <div class="lesson-desc">
+          A quick reference for choosing between the tools in this workshop. Match what you need
+          on the left to the framework on the right — click any framework to open its deep-dive.
+        </div>
+      </div>
+
+      <div class="decision-grid">
+        <div class="dg-card dg-lc" data-goto="langchain">
+          <div class="dg-card-head">🦜 LangChain <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>150+ source &amp; tool integrations</li>
+            <li>Prompt templates &amp; versioning</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-lg" data-goto="langgraph">
+          <div class="dg-card-head">🕸️ LangGraph <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>Stateful graphs — branching, loops, human-in-loop</li>
+            <li>Long-running, resumable agents (checkpoints)</li>
+            <li>Self-correcting / cyclic reasoning loops</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-crew" data-goto="crewai">
+          <div class="dg-card-head">🤝 CrewAI <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>Team of specialised agents / task handoffs</li>
+            <li>Role / goal / backstory agent personas</li>
+            <li>Research → write → review pipeline</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-pa" data-goto="pydanticai">
+          <div class="dg-card-head">🛡️ Pydantic AI <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>Type-safe, validated structured output</li>
+            <li>Extract records from text into a schema</li>
+            <li>Typed dependency injection into tools</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-li" data-goto="llamaindex">
+          <div class="dg-card-head">🦙 LlamaIndex <span class="dg-arrow">→</span></div>
+          <ul class="dg-cases">
+            <li>RAG over your documents (vector search)</li>
+            <li>Chat over your documents (with memory)</li>
+            <li>Query across multiple knowledge bases</li>
+          </ul>
+        </div>
+        <div class="dg-card dg-raw">
+          <div class="dg-card-head">⚙️ Raw Python</div>
+          <ul class="dg-cases">
+            <li>Quick LLM demo / learning</li>
+            <li>Max control, minimal dependencies</li>
+            <li>Throwaway prototype / one-off script</li>
+          </ul>
+        </div>
       </div>
 
     </section>
 
   </main>
 
-  <script src="/frameworks.js"></script>
+  <script src="/frameworks.js?v=3"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agent Workshop — What is an Agent?</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="agent-definition.css" />
+  <link rel="stylesheet" href="agent-definition.css?v=3" />
 </head>
 <body>
 
@@ -24,8 +24,13 @@
     <button id="run-btn" class="run-btn">▶ Run Simulation</button>
     <button id="reset-btn" class="run-btn secondary hidden">↻ Reset</button>
     <div class="definition-quote">
-      "If you know the outcome, it's <strong>code (or maybe a fancy automation)</strong>. An agent is software that makes decisions where the outcome is <strong>not known</strong>, and the steps are determined by <strong>previous results</strong>."
+      "If you know the outcome, it's <strong>code</strong>. An agent decides when the outcome is <strong>not known</strong> — its steps are determined by <strong>previous results</strong>."
     </div>
+  </div>
+
+  <div class="footer-note">
+    <div class="note-icon">⚠️</div>
+    <strong>Why is it hard to create and debug?</strong> Because steps are determined by previous results at runtime, you can't easily foresee every exact path or edge case the LLM might take!
   </div>
 
   <main class="definition-main">
@@ -129,11 +134,6 @@
 
   </main>
 
-  <div class="footer-note">
-    <div class="note-icon">⚠️</div>
-    <strong>Why is it hard to create and debug?</strong> Because steps are determined by previous results at runtime, you can't easily foresee every exact path or edge case the LLM might take!
-  </div>
-
-  <script src="agent-definition.js"></script>
+  <script src="agent-definition.js?v=3"></script>
 </body>
 </html>

@@ -580,3 +580,47 @@
 
 /* ── Utility ──────────────────────────────────────── */
 .hidden { display: none !important; }
+
+/* ── Live build status (while the agent runs) ─────────────────────── */
+.build-status {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: left;
+}
+.bs-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text, #e8eaf6);
+}
+.bs-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+.bs-row.indent { margin-left: 22px; }
+.bs-row.running { background: rgba(15, 118, 110, 0.12); }
+.bs-icon { width: 18px; flex-shrink: 0; display: inline-flex; justify-content: center; }
+.bs-label { font-weight: 600; color: var(--text, #e8eaf6); white-space: nowrap; }
+.bs-sub {
+  color: var(--text-muted, #8b90b0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bs-row.running .bs-sub { color: #2dd4bf; }
+
+/* small inline spinner for the running row */
+.bs-spin {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(45, 212, 191, 0.3);
+  border-top-color: #2dd4bf;
+  border-radius: 50%;
+  display: inline-block;
+  animation: bs-spin 0.7s linear infinite;
+}
+@keyframes bs-spin { to { transform: rotate(360deg); } }

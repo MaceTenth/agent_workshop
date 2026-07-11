@@ -24,36 +24,61 @@ tickerInput.addEventListener('keydown', e => {
 runBtn.addEventListener('click', runAgent);
 
 // ── Main agent function ───────────────────────────────────────────────────────
+function showError(msg) {
+  loadingState.classList.add('hidden');
+  emptyState.classList.remove('hidden');
+  emptyState.querySelector('.empty-title').textContent = '⚠️ ' + msg;
+  runBtn.disabled = false;
+}
+
 async function runAgent() {
   const ticker = tickerInput.value.trim().toUpperCase();
   const risk_tolerance = document.getElementById('risk-select').value;
+  const model = document.getElementById('model-select').value;
   if (!ticker) { tickerInput.focus(); return; }
 
-  // --- Show loading ---
+  // --- Show loading with live status ---
   emptyState.classList.add('hidden');
   agentTrace.classList.add('hidden');
   loadingState.classList.remove('hidden');
+  renderStatus([]);
   runBtn.disabled = true;
 
-  let data;
+  // Start the run in the background
+  let jobId;
   try {
-    const res = await fetch('/agent', {
+    const res = await fetch('/agent/start', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ticker, risk_tolerance }),
+      body:    JSON.stringify({ ticker, risk_tolerance, model }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    data = await res.json();
+    if (!res.ok) {
+      let msg = `Couldn't start the agent (HTTP ${res.status}).`;
+      try { const e = await res.json(); if (e && e.error) msg = e.error; } catch (_) {}
+      throw new Error(msg);
+    }
+    jobId = (await res.json()).job_id;
   } catch (err) {
-    loadingState.classList.add('hidden');
-    emptyState.classList.remove('hidden');
-    emptyState.querySelector('.empty-title').textContent = '⚠️ Error: ' + err.message;
-    runBtn.disabled = false;
+    showError(err.message);
     return;
+  }
+
+  // Poll for progress until done
+  let status = { progress: [], done: false };
+  while (!status.done) {
+    await delay(700);
+    try {
+      const sres = await fetch(`/agent/status/${jobId}`);
+      status = await sres.json();
+    } catch (e) { continue; }  // transient network — keep polling
+    renderStatus(status.progress || []);
   }
 
   loadingState.classList.add('hidden');
   runBtn.disabled = false;
+
+  if (status.error) { showError(status.error); return; }
+  const data = status.result;
 
   // Clear previous run
   ['plan-list','exec-list','synthesis-content','verify-content','usage-footer'].forEach(id => {
@@ -63,7 +88,7 @@ async function runAgent() {
 
   agentTrace.classList.remove('hidden');
 
-  // Progressive reveal
+  // Progressive reveal of the final result
   await renderPlan(data.plan, data.steps);
   await delay(200);
   await renderExecution(data.steps);
@@ -72,6 +97,52 @@ async function runAgent() {
   await delay(200);
   renderVerification(data.verification);
   renderUsage(data.usage, data.ticker);
+}
+
+// ── Live build status (while the agent runs) ──────────────────────────────────
+function renderStatus(progress) {
+  const has = (p) => progress.some(p);
+  const planDone = has(e => e.phase === 'plan' && e.status === 'done');
+  const planEv   = progress.find(e => e.phase === 'plan' && e.status === 'done');
+  const tasks    = planEv ? planEv.tasks : [];
+  const total    = planEv ? planEv.total : 5;
+
+  const execDone = {}, execRunning = {}, execTool = {}, execTask = {};
+  for (const e of progress) {
+    if (e.phase !== 'exec') continue;
+    if (e.status === 'done')    { execDone[e.step] = true; execTool[e.step] = e.tool_used; execTask[e.step] = e.task; }
+    if (e.status === 'running') { execRunning[e.step] = true; execTask[e.step] = e.task; }
+  }
+  const synthRunning  = has(e => e.phase === 'synthesize' && e.status === 'running');
+  const synthDone     = has(e => e.phase === 'synthesize' && e.status === 'done');
+  const verifyRunning = has(e => e.phase === 'verify' && e.status === 'running');
+  const verifyDone    = has(e => e.phase === 'verify' && e.status === 'done');
+
+  const icon = (done, running) => done ? '✅' : running ? '<span class="bs-spin"></span>' : '⬜';
+  const row = (done, running, label, sub, indent) =>
+    `<div class="bs-row${indent ? ' indent' : ''}${running ? ' running' : ''}">
+       <span class="bs-icon">${icon(done, running)}</span>
+       <span class="bs-label">${label}</span>
+       <span class="bs-sub">${sub}</span>
+     </div>`;
+
+  let html = '<div class="build-status"><div class="bs-title">🤖 Building the analysis…</div>';
+  html += row(planDone, !planDone, 'Plan', planDone ? `${tasks.length} sub-tasks` : 'decomposing the task…', false);
+
+  const nSteps = planDone ? tasks.length : total;
+  for (let i = 1; i <= nSteps; i++) {
+    const done = !!execDone[i];
+    const running = !!execRunning[i] && !done;
+    const label = escHtml(execTask[i] || tasks[i - 1] || `Step ${i}`);
+    const tool = execTool[i];
+    const sub = tool ? `🔧 ${escHtml(tool)}` : (done ? '💭 LLM only' : (running ? 'running…' : ''));
+    html += row(done, running, `Step ${i}`, `${label}${sub ? ' · ' + sub : ''}`, true);
+  }
+
+  html += row(synthDone, synthRunning, 'Synthesize', synthDone ? 'summary written' : (synthRunning ? 'merging findings…' : ''), false);
+  html += row(verifyDone, verifyRunning, 'Verify', verifyDone ? 'self-review complete' : (verifyRunning ? 'self-reviewing…' : ''), false);
+  html += '</div>';
+  loadingState.innerHTML = html;
 }
 
 // ── Phase 1: Plan ─────────────────────────────────────────────────────────────
@@ -249,3 +320,23 @@ function escHtml(str) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// ── Provider API-key warning: fetch /config and warn if the selected
+// provider's key isn't set in .env ────────────────────────────────────────
+const modelSelectEl = document.getElementById('model-select');
+const keyWarningEl  = document.getElementById('key-warning');
+
+function updateKeyWarning(keyStatus) {
+  const opt = modelSelectEl.selectedOptions[0];
+  const provider = opt && opt.closest('optgroup') ? opt.closest('optgroup').label.toLowerCase() : null;
+  const missing = provider && keyStatus && keyStatus[provider] === false;
+  keyWarningEl.style.display = missing ? 'inline-block' : 'none';
+}
+
+fetch('/config')
+  .then((r) => r.json())
+  .then((cfg) => {
+    updateKeyWarning(cfg.keys);
+    modelSelectEl.addEventListener('change', () => updateKeyWarning(cfg.keys));
+  })
+  .catch(() => { /* /config unreachable — silently skip the warning banner */ });
