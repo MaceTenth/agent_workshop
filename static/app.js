@@ -90,6 +90,7 @@ const EMPTY_STATE_HTML =
 
 clearBtn.addEventListener('click', () => {
   history = [];
+  conversationLog = [];
   callCount = 0;
   chatEl.innerHTML = EMPTY_STATE_HTML;
   emptyState = document.getElementById('empty-state');
@@ -155,9 +156,9 @@ function restoreState() {
 // ── Export the conversation as Markdown ─────────────────────────────
 const exportBtn = document.getElementById('export-btn');
 exportBtn.addEventListener('click', () => {
-  if (!history.length) return;
+  if (!conversationLog.length) return;
   let md = '# Agent Workshop conversation\n\n';
-  for (const m of history) {
+  for (const m of conversationLog) {
     md += `**${m.role === 'user' ? 'You' : 'AI'}:** ${m.content}\n\n`;
   }
   const blob = new Blob([md], { type: 'text/markdown' });
@@ -180,6 +181,9 @@ const CTX_LIMIT = 128000; // context meter scale (Claude supports up to 1M)
 
 // Conversation history kept in JS — sent only when memory toggle is ON
 let history   = [];
+// Full transcript for the whole session (Export) — unlike `history`, this is
+// NEVER reset when the Memory toggle changes, only when the user hits Clear.
+let conversationLog = [];
 let callCount = 0;
 
 // ── Context meter helper ───────────────────────────
@@ -583,6 +587,9 @@ async function sendMessage() {
     // Always accumulate history so toggling memory mid-conversation works
     history.push({ role: 'user',      content: text });
     history.push({ role: 'assistant', content: data.response });
+    // Export log is never cleared by the memory toggle — only by Clear.
+    conversationLog.push({ role: 'user',      content: text });
+    conversationLog.push({ role: 'assistant', content: data.response });
 
   } catch (err) {
     const content = document.querySelector(`#ai-bubble-${currentCall} .bubble-content`);
