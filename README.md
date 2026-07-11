@@ -7,12 +7,24 @@ A hands-on FastAPI application that walks through the building blocks of AI agen
 | Module | What it demonstrates |
 |---|---|
 | **Stateless LLM** | Single, context-free call to the model (Anthropic or OpenAI) |
-| **Memory** | Full conversation history passed on every request |
+| **Memory** | Full conversation history passed on every request, with Claude compaction on supporting models |
 | **Tools** | Model-driven tool use (calculator, datetime) — works on both providers |
 | **Web Search** | Live grounding via Claude's built-in `web_search` server tool |
 | **RAG** | Retrieve → Augment → Generate with in-memory employee data |
+| **Agent Mode** | Compose Tools + Web Search + RAG into a single agentic loop |
 | **Planning** | Zero-shot, few-shot, chain-of-thought, decomposition, ReAct |
-| **Agent** | Multi-step stock analysis agent (Plan → Execute → Synthesise → Verify) |
+| **Agent in Action** | Multi-step stock analysis agent (Plan → Execute → Synthesise → Verify), with live progress and risk-tolerance tuning |
+| **Frameworks** | Overview + interactive decision guide comparing agent frameworks (LangGraph, Pydantic AI, LlamaIndex, and more) |
+
+### Workshop UX
+
+- **Provider & model switcher** — pick Anthropic or OpenAI models per-request from a grouped dropdown; the choice threads through every endpoint (`/chat`, `/plan`, `/agent`).
+- **Missing API key warning** — a `⚠️ No API key` badge appears next to the model picker whenever the selected provider's key isn't set in `.env`; calling it anyway returns a clear, friendly error instead of a raw SDK exception.
+- **Cost & latency badges** — every call shows its estimated USD cost (from per-model pricing) and round-trip latency.
+- **Peek under the hood** — a collapsible panel showing the exact system/messages/tools payload sent to the model, including any injected RAG or web-search context.
+- **Context window meter** — a live sidebar gauge of how much of the context window the current conversation is using.
+- **Export / Clear conversation** — download the full chat transcript as Markdown at any point, or wipe the conversation and start fresh. Export keeps the whole session's history even if you toggle Memory mid-conversation.
+- **"What is an Agent?" / Control Loop pages** — standalone interactive explainers for agent concepts, separate from the live chat demos.
 
 ## Quick Start
 
@@ -75,6 +87,9 @@ routes the request (including tool calls, memory, and structured JSON output)
 to the right SDK. Anthropic-only features (context-management/compaction
 betas, the built-in `web_search` server tool) transparently fall back to a
 plain call when an OpenAI model is selected.
+
+Check `GET /config` to see the model catalog and which providers currently
+have a configured API key.
 
 ## Sensitive Data Notice
 
