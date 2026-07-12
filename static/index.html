@@ -30,9 +30,21 @@
         </optgroup>
       </select>
     </label>
+    <label id="effort-label" title="Reasoning depth — Anthropic Sonnet 5 / Opus 4.8 only" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap">
+      Effort
+      <select id="effort-select" style="font-size:12px;font-weight:600;color:var(--text);background:var(--bg,#1e1e2e);border:1px solid var(--border);border-radius:8px;padding:5px 8px;cursor:pointer">
+        <option value="">Default</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="xhigh">xHigh</option>
+        <option value="max">Max</option>
+      </select>
+    </label>
     <span id="key-warning" title="Add the missing API key to your .env file" style="display:none;font-size:12px;font-weight:700;color:var(--red,#f87171);background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.35);border-radius:8px;padding:5px 10px;white-space:nowrap">⚠️ No API key</span>
     <span id="session-cost" title="Total spent this session" style="font-size:12px;font-weight:700;color:var(--green,#34d399);background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:8px;padding:5px 10px;white-space:nowrap">$0.00000 · 0 calls</span>
     <a href="agent-definition.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">💡 What is an Agent? →</a>
+    <a href="tokenizer.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🔡 Tokenizer →</a>
     <a href="planning.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🧠 Planning →</a>
     <a href="agent.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🤖 Agent →</a>
     <a href="frameworks.html" style="font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;padding:5px 12px;border:1px solid var(--border);border-radius:8px;white-space:nowrap;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">🔗 Frameworks →</a>

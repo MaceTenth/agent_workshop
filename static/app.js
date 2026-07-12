@@ -127,7 +127,7 @@ const STATE_KEY = 'agentWorkshopState';
 function saveState() {
   try {
     localStorage.setItem(STATE_KEY, JSON.stringify({
-      model: modelSelect.value,
+      model: modelSelect.value, effort: effortSelect.value,
       memory: memToggle.checked, tools: toolsToggle.checked,
       web: webSearchToggle.checked, rag: ragToggle.checked, agent: agentToggle.checked,
     }));
@@ -138,6 +138,8 @@ function restoreState() {
   try { s = JSON.parse(localStorage.getItem(STATE_KEY)); } catch (e) { return; }
   if (!s) return;
   if (s.model) modelSelect.value = s.model;
+  if (s.effort) effortSelect.value = s.effort;
+  syncEffort();
   const map = [
     [agentToggle, agentStatus, s.agent, 'ON — capabilities compose', 'OFF'],
     [memToggle, memStatus, s.memory, 'ON — stateful', 'OFF — stateless'],
@@ -176,6 +178,17 @@ const ctxFill     = document.getElementById('ctx-bar-fill');
 const ctxTokens   = document.getElementById('ctx-tokens');
 let emptyState    = document.getElementById('empty-state');
 const modelSelect = document.getElementById('model-select');
+const effortSelect = document.getElementById('effort-select');
+
+// Only these Anthropic models accept output_config.effort — grey out the picker
+// for anything else (Haiku 4.5 / OpenAI) so it can't be sent and 400.
+const EFFORT_MODELS = ['claude-sonnet-5', 'claude-opus-4-8'];
+function syncEffort() {
+  const ok = EFFORT_MODELS.includes(modelSelect.value);
+  effortSelect.disabled = !ok;
+  const lbl = document.getElementById('effort-label');
+  if (lbl) lbl.style.opacity = ok ? '1' : '0.4';
+}
 
 const CTX_LIMIT = 128000; // context meter scale (Claude supports up to 1M)
 
@@ -458,7 +471,7 @@ async function sendMessage() {
   }, 100);
 
   try {
-    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn, agent_mode: agentOn, model: modelSelect.value };
+    const payload = { message: text, history: historySnap, tools_enabled: toolsOn, web_search_enabled: webSearchOn, rag_enabled: ragOn, agent_mode: agentOn, model: modelSelect.value, effort: effortSelect.value || null };
     console.group(`%c📤 API Call #${currentCall} — REQUEST`, 'color:#a78bfa;font-weight:bold');
     console.log('%cUser message:', 'color:#93c5fd', text);
     console.log('%cHistory sent (%d messages):', 'color:#93c5fd', historySnap.length, historySnap);
@@ -625,8 +638,10 @@ function escapeHtml(str) {
 }
 
 // Save the model choice too, and restore everything on load
-modelSelect.addEventListener('change', saveState);
+modelSelect.addEventListener('change', () => { syncEffort(); saveState(); });
+effortSelect.addEventListener('change', saveState);
 restoreState();
+syncEffort();
 updateUI();
 
 // ── Provider API-key warning: fetch /config and grey out / warn about any

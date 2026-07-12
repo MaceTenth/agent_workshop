@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Workshop — Tokenizer</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="tokenizer.css" />
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="back-link">← Workshop</a>
+    <div class="header-icon" style="background:#7c3aed">🔡</div>
+    <div class="header-titles">
+      <h1>Tokenizer Playground</h1>
+      <p>See how models split text into tokens — and why the counts differ</p>
+    </div>
+    <a href="planning.html" class="back-link" style="margin-left:auto">🧠 Planning →</a>
+    <a href="agent.html" class="back-link">🤖 Agent →</a>
+  </header>
+
+  <main class="tok-main">
+
+    <div class="tok-intro">
+      Models don't read characters — they read <strong>tokens</strong>: chunks produced by a
+      byte-pair-encoding (BPE) tokenizer. GPT and open models (DeepSeek, Qwen, Llama, Mistral, GLM)
+      tokenize live in your browser and show the actual pieces; Claude's count comes from Anthropic's
+      <code>count_tokens</code> API (it exposes the count, not the pieces). Load an example or type your own.
+    </div>
+
+    <!-- ── Examples ── -->
+    <div class="tok-examples-row">
+      <span class="tok-examples-label">Examples</span>
+      <div id="tok-examples" class="tok-examples"><!-- chips built by JS --></div>
+    </div>
+
+    <!-- ── Input ── -->
+    <textarea id="tok-input" class="tok-input" spellcheck="false" placeholder="Type or paste text…"></textarea>
+
+    <!-- ── Controls ── -->
+    <div class="tok-controls">
+      <label class="tok-model-label">
+        Model
+        <select id="tok-model"><!-- options built by JS --></select>
+      </label>
+      <div class="tok-view">
+        <button class="view-btn active" data-view="text">Text</button>
+        <button class="view-btn" data-view="ids">Token IDs</button>
+      </div>
+    </div>
+
+    <!-- ── Stats ── -->
+    <div class="tok-stats">
+      <div class="stat"><div class="stat-num" id="stat-chars">0</div><div class="stat-lbl">Characters</div></div>
+      <div class="stat"><div class="stat-num" id="stat-tokens">0</div><div class="stat-lbl">Tokens</div></div>
+      <div class="stat"><div class="stat-num" id="stat-ratio">—</div><div class="stat-lbl">Chars / token</div></div>
+    </div>
+
+    <!-- ── Token visualization ── -->
+    <div class="tok-viz-label">Tokens <span id="tok-viz-model">(GPT-4o)</span></div>
+    <div id="tok-viz" class="tok-viz"><span class="tok-empty">Tokens appear here…</span></div>
+
+    <!-- ── Cross-tokenizer comparison ── -->
+    <div class="tok-viz-label" style="margin-top:26px">Same text, every tokenizer</div>
+    <table class="cmp-table">
+      <thead>
+        <tr><th>Tokenizer</th><th>Models</th><th>Tokens</th><th class="cmp-bar-col">Relative size</th></tr>
+      </thead>
+      <tbody id="cmp-body"><!-- filled by JS --></tbody>
+    </table>
+    <div id="cmp-note" class="cmp-note"></div>
+
+  </main>
+
+  <script type="module" src="tokenizer.js"></script>
+</body>
+</html>

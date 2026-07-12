@@ -35,6 +35,7 @@ async function runAgent() {
   const ticker = tickerInput.value.trim().toUpperCase();
   const risk_tolerance = document.getElementById('risk-select').value;
   const model = document.getElementById('model-select').value;
+  const effort = document.getElementById('effort-select').value || null;
   if (!ticker) { tickerInput.focus(); return; }
 
   // --- Show loading with live status ---
@@ -50,7 +51,7 @@ async function runAgent() {
     const res = await fetch('/agent/start', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ticker, risk_tolerance, model }),
+      body:    JSON.stringify({ ticker, risk_tolerance, model, effort }),
     });
     if (!res.ok) {
       let msg = `Couldn't start the agent (HTTP ${res.status}).`;
@@ -340,3 +341,16 @@ fetch('/config')
     modelSelectEl.addEventListener('change', () => updateKeyWarning(cfg.keys));
   })
   .catch(() => { /* /config unreachable — silently skip the warning banner */ });
+
+// ── Effort picker: only Anthropic Sonnet 5 / Opus 4.8 accept output_config.effort;
+// grey it out for anything else so it can't be sent and 400. ─────────────────
+const effortSelectEl = document.getElementById('effort-select');
+const effortLabelEl  = document.getElementById('effort-label');
+const EFFORT_MODELS  = ['claude-sonnet-5', 'claude-opus-4-8'];
+function syncEffort() {
+  const ok = EFFORT_MODELS.includes(modelSelectEl.value);
+  if (effortSelectEl) effortSelectEl.disabled = !ok;
+  if (effortLabelEl) effortLabelEl.style.opacity = ok ? '1' : '0.4';
+}
+modelSelectEl.addEventListener('change', syncEffort);
+syncEffort();
