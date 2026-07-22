@@ -26,6 +26,17 @@ A hands-on FastAPI application that walks through the building blocks of AI agen
 - **Context window meter** — a live sidebar gauge of how much of the context window the current conversation is using.
 - **Export / Clear conversation** — download the full chat transcript as Markdown at any point, or wipe the conversation and start fresh. Export keeps the whole session's history even if you toggle Memory mid-conversation.
 - **"What is an Agent?" / Control Loop pages** — standalone interactive explainers for agent concepts, separate from the live chat demos.
+- **Reasoning effort selector** — for models that support it, choose the effort/reasoning level per-request; it's threaded through every LLM call (stateless, memory, tools, agent, planning).
+
+## Screenshots
+
+**Tokenizer playground — right-to-left (Hebrew) prompt:**
+
+![Tokenizer playground with a Hebrew RTL prompt broken into tokens](screenshots/tokenizer-hebrew-rtl.png)
+
+**Tokenizer playground — English prompt:**
+
+![Tokenizer playground with an English prompt broken into tokens](screenshots/tokenizer-english-prompt.png)
 
 ## Quick Start
 
