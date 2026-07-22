@@ -30,6 +30,27 @@ MODEL_CATALOG = {
 DEFAULT_PROVIDER = "anthropic"
 DEFAULT_MODEL = "claude-sonnet-5"
 
+# ── Effort: Anthropic reasoning-depth control via output_config.effort ────────
+# Only these Anthropic models accept `effort` — Haiku 4.5 and all OpenAI models
+# reject it (400), so effort is silently ignored for anything not listed here.
+EFFORT_MODELS = {
+    "claude-sonnet-5", "claude-sonnet-4-6",
+    "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",
+}
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+
+
+def supports_effort(model: str | None) -> bool:
+    return model in EFFORT_MODELS
+
+
+def effort_kwargs(model: str | None, effort: str | None) -> dict:
+    """{'output_config': {'effort': ...}} when the model supports effort and a
+    valid level was chosen; otherwise {} — a no-op for Haiku/OpenAI/no-choice."""
+    if effort in EFFORT_LEVELS and supports_effort(model):
+        return {"output_config": {"effort": effort}}
+    return {}
+
 _API_KEY_ENV = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
 
 
@@ -191,7 +212,7 @@ def anthropic_text(response) -> str:
 
 
 def complete(mdl, system, messages, max_tokens=2048, tools=None,
-             use_context_mgmt=False, cm_beta=None, cm_edit=None):
+             use_context_mgmt=False, cm_beta=None, cm_edit=None, effort=None):
     """
     Provider-agnostic single-turn completion, shared by every module that
     just needs "system + messages in, text + usage out" (no tool loop).
@@ -206,6 +227,7 @@ def complete(mdl, system, messages, max_tokens=2048, tools=None,
         kwargs = dict(model=mdl, max_tokens=max_tokens, system=system, messages=messages)
         if tools:
             kwargs["tools"] = tools
+        kwargs.update(effort_kwargs(mdl, effort))
         if use_context_mgmt and mdl in {
             "claude-sonnet-5", "claude-sonnet-4-6",
             "claude-opus-4-8", "claude-opus-4-7", "claude-opus-4-6",

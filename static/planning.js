@@ -23,10 +23,11 @@ function loadingDots() {
 
 async function callPlan(task, mode) {
   const model = document.getElementById('model-select').value;
+  const effort = document.getElementById('effort-select').value || null;
   const res = await fetch('/plan', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task, mode, model }),
+    body: JSON.stringify({ task, mode, model, effort }),
   });
   if (!res.ok) {
     let msg = `Server error ${res.status}`;
@@ -191,4 +192,21 @@ function renderReact(steps) {
       modelSelectEl.addEventListener('change', () => updateKeyWarning(cfg.keys));
     })
     .catch(() => { /* /config unreachable — silently skip the warning banner */ });
+})();
+
+// ── Effort picker: only Anthropic Sonnet 5 / Opus 4.8 accept output_config.effort;
+// grey it out for anything else so it can't be sent and 400. ─────────────────
+(function () {
+  const modelSelectEl = document.getElementById('model-select');
+  const effortSelectEl = document.getElementById('effort-select');
+  const effortLabelEl = document.getElementById('effort-label');
+  if (!modelSelectEl || !effortSelectEl) return;
+  const EFFORT_MODELS = ['claude-sonnet-5', 'claude-opus-4-8'];
+  function sync() {
+    const ok = EFFORT_MODELS.includes(modelSelectEl.value);
+    effortSelectEl.disabled = !ok;
+    if (effortLabelEl) effortLabelEl.style.opacity = ok ? '1' : '0.4';
+  }
+  modelSelectEl.addEventListener('change', sync);
+  sync();
 })();

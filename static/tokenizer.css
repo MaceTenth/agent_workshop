@@ -1,0 +1,157 @@
+/* Tokenizer playground — layered on top of style.css */
+
+.tok-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 28px 48px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tok-intro {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.tok-intro code, .cmp-note code, .tok-intro strong { color: var(--teal); }
+.tok-intro code, .cmp-note code {
+  background: var(--surface2);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 12.5px;
+}
+.tok-intro strong { color: var(--text); }
+
+/* ── Examples ── */
+.tok-examples-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.tok-examples-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); white-space: nowrap;
+}
+.tok-examples { display: flex; flex-wrap: wrap; gap: 7px; }
+.ex-chip {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ex-chip:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+/* ── Input ── */
+.tok-input {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  font-family: inherit;
+}
+.tok-input:focus { outline: none; border-color: var(--accent); }
+
+/* ── Controls ── */
+.tok-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin: 14px 0;
+}
+.tok-model-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+#tok-model {
+  font-size: 13.5px; font-weight: 600; text-transform: none; letter-spacing: 0;
+  color: var(--text); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 9px; padding: 8px 10px; cursor: pointer; min-width: 210px;
+}
+#tok-model:focus { outline: none; border-color: var(--accent); }
+
+.tok-view { display: flex; gap: 8px; }
+.view-btn {
+  background: var(--surface); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 9px;
+  padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.view-btn:hover { border-color: var(--accent); color: var(--text); }
+.view-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Stats ── */
+.tok-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0; }
+.stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; text-align: center;
+}
+.stat-num { font-size: 26px; font-weight: 800; color: var(--text); }
+.stat-lbl { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Token visualization ── */
+.tok-viz-label {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin: 20px 0 8px;
+}
+.tok-viz-label span { text-transform: none; letter-spacing: 0; font-weight: 500; opacity: 0.7; }
+
+.tok-viz {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; line-height: 2.1; min-height: 60px; word-break: break-all;
+}
+.tok-empty { color: var(--text-muted); font-style: italic; }
+
+.tok {
+  display: inline-block; padding: 2px 3px; margin: 1px 0; border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px;
+  white-space: pre; color: #0f1117; cursor: default;
+}
+.tok.id-view {
+  color: var(--text); padding: 2px 6px; margin: 2px; font-size: 12.5px;
+  background: var(--surface2) !important; border: 1px solid var(--border);
+}
+.tok .nl { opacity: 0.45; }
+
+/* ── Comparison table ── */
+.cmp-table {
+  width: 100%; border-collapse: collapse; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+}
+.cmp-table th, .cmp-table td {
+  padding: 11px 14px; text-align: left; font-size: 13.5px; border-bottom: 1px solid var(--border);
+}
+.cmp-table th {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); font-weight: 700;
+}
+.cmp-table tr:last-child td { border-bottom: none; }
+.cmp-table td.tok-count { font-weight: 800; font-size: 15px; white-space: nowrap; }
+.cmp-enc { color: var(--text); font-family: ui-monospace, monospace; font-size: 12.5px; }
+.cmp-models { color: var(--text-muted); font-size: 12.5px; }
+.cmp-badge {
+  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 5px; margin-left: 8px; vertical-align: middle;
+}
+.cmp-badge.gpt { background: var(--green-bg); color: var(--green); }
+.cmp-badge.claude { background: var(--purple-bg); color: var(--purple); }
+.cmp-badge.hf { background: var(--teal-bg); color: var(--teal); }
+.cmp-bar-col { width: 34%; }
+.cmp-bar-track { background: var(--surface2); border-radius: 6px; height: 12px; overflow: hidden; }
+.cmp-bar-fill { height: 100%; border-radius: 6px; transition: width 0.25s; }
+.cmp-note { color: var(--text-muted); font-size: 12.5px; margin-top: 10px; line-height: 1.5; }
+.cmp-pending { color: var(--text-muted); font-style: italic; }
+
+@media (max-width: 620px) {
+  .tok-stats { grid-template-columns: 1fr 1fr; }
+  .cmp-models { display: none; }
+}

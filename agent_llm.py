@@ -5,7 +5,7 @@ from tools import TOOLS, execute_tool
 from llm import CONTEXT_MGMT_MODELS
 from providers import (
     anthropic_client, openai_client, provider_for_model, require_key,
-    to_openai_tools, openai_usage, openai_text, DEFAULT_MODEL,
+    to_openai_tools, openai_usage, openai_text, effort_kwargs, DEFAULT_MODEL,
 )
 
 load_dotenv()
@@ -57,7 +57,7 @@ def _text(response) -> str:
     return "".join(b.text for b in response.content if b.type == "text")
 
 
-def _call(mdl, provider, system, messages, tools=None, json_schema=None, schema_name="response"):
+def _call(mdl, provider, system, messages, tools=None, json_schema=None, schema_name="response", effort=None):
     """Single-turn call that works for both providers, with optional tools
     and optional strict JSON-schema structured output."""
     if provider == "anthropic":
@@ -65,8 +65,12 @@ def _call(mdl, provider, system, messages, tools=None, json_schema=None, schema_
         kwargs = dict(model=mdl, max_tokens=MAX_TOKENS, system=system, messages=messages)
         if tools:
             kwargs["tools"] = tools
+        # effort and a json_schema format both live under output_config — merge.
+        output_config = dict(effort_kwargs(mdl, effort).get("output_config", {}))
         if json_schema:
-            kwargs["output_config"] = {"format": {"type": "json_schema", "schema": json_schema}}
+            output_config["format"] = {"type": "json_schema", "schema": json_schema}
+        if output_config:
+            kwargs["output_config"] = output_config
         response = client.messages.create(**kwargs)
         return response, _text(response), {
             "prompt_tokens": response.usage.input_tokens,
@@ -90,7 +94,7 @@ def _call(mdl, provider, system, messages, tools=None, json_schema=None, schema_
     }
 
 
-def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = None, emit=None) -> dict:
+def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = None, emit=None, effort: str = None) -> dict:
     """
     Full multi-step agent loop for stock analysis:
       1. PLAN    — decompose the task into sub-steps
@@ -131,7 +135,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         "a simple ratio from widely known numbers).\n"
         "- Tasks 4, 5 are pure LLM (needs_tool=false, tool_hint='none').",
         [{"role": "user", "content": f"Plan a full investment analysis for {ticker}."}],
-        json_schema=PLAN_SCHEMA, schema_name="plan",
+        json_schema=PLAN_SCHEMA, schema_name="plan", effort=effort,
     )
     _track(plan_usage)
     tasks = json.loads(plan_text).get("tasks", [])
@@ -175,11 +179,13 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
                         model=mdl, max_tokens=MAX_TOKENS, system=system_prompt,
                         messages=msgs, tools=TOOLS,
                         context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+                        **effort_kwargs(mdl, effort),
                     )
                 else:
                     r = client.messages.create(
                         model=mdl, max_tokens=MAX_TOKENS, system=system_prompt,
                         messages=msgs, tools=TOOLS,
+                        **effort_kwargs(mdl, effort),
                     )
                 _track({"prompt_tokens": r.usage.input_tokens, "completion_tokens": r.usage.output_tokens})
                 tool_uses = [b for b in r.content if b.type == "tool_use"]
@@ -198,6 +204,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
 
                     final = client.messages.create(
                         model=mdl, max_tokens=MAX_TOKENS, system=system_prompt, messages=msgs,
+                        **effort_kwargs(mdl, effort),
                     )
                     _track({"prompt_tokens": final.usage.input_tokens, "completion_tokens": final.usage.output_tokens})
                     step["result"] = _text(final)
@@ -229,7 +236,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
                 else:
                     step["result"] = openai_text(r)
         else:
-            _, text, u = _call(mdl, provider, system_prompt, msgs)
+            _, text, u = _call(mdl, provider, system_prompt, msgs, effort=effort)
             _track(u)
             step["result"] = text
 
@@ -252,6 +259,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         "Keep each section to 2-3 sentences. "
         "Remind the reader this is based on training data, not live prices.",
         [{"role": "user", "content": f"Ticker: {ticker}\n\nResearch:\n{context}"}],
+        effort=effort,
     )
     _track(synth_usage)
     _emit({"phase": "synthesize", "status": "done"})
@@ -262,7 +270,7 @@ def run_stock_agent(ticker: str, risk_tolerance: str = "moderate", model: str = 
         mdl, provider,
         "You are a QA reviewer for AI-generated financial analysis.",
         [{"role": "user", "content": f"Review this {ticker} analysis:\n\n{synthesis}"}],
-        json_schema=VERIFY_SCHEMA, schema_name="verification",
+        json_schema=VERIFY_SCHEMA, schema_name="verification", effort=effort,
     )
     _track(verify_usage)
     try:

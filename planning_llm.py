@@ -19,23 +19,24 @@ MODEL = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL)
 MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "2048"))
 
 
-def _complete(mdl, system, messages):
-    text, usage, _, _ = provider_complete(mdl, system, messages, max_tokens=MAX_TOKENS)
+def _complete(mdl, system, messages, effort=None):
+    text, usage, _, _ = provider_complete(mdl, system, messages, max_tokens=MAX_TOKENS, effort=effort)
     return text, usage
 
 
 # ── Prompt Engineering ────────────────────────────────────────────────────────
 
-def zero_shot(question: str, model: str = None) -> tuple[str, dict]:
+def zero_shot(question: str, model: str = None, effort: str = None) -> tuple[str, dict]:
     """Direct answer — no examples, no reasoning instructions."""
     return _complete(
         model or MODEL,
         "You are a helpful assistant. Answer directly and concisely.",
         [{"role": "user", "content": question}],
+        effort=effort,
     )
 
 
-def few_shot(question: str, model: str = None) -> tuple[str, dict]:
+def few_shot(question: str, model: str = None, effort: str = None) -> tuple[str, dict]:
     """Provide two worked examples before asking the real question."""
     return _complete(
         model or MODEL,
@@ -52,22 +53,24 @@ def few_shot(question: str, model: str = None) -> tuple[str, dict]:
                 ),
             },
         ],
+        effort=effort,
     )
 
 
-def chain_of_thought(question: str, model: str = None) -> tuple[str, dict]:
+def chain_of_thought(question: str, model: str = None, effort: str = None) -> tuple[str, dict]:
     """Instruct the model to reason step-by-step before giving its final answer."""
     return _complete(
         model or MODEL,
         "You are a helpful assistant. Before answering, think step by step. "
         "Show your full reasoning process, then state your final answer clearly.",
         [{"role": "user", "content": question}],
+        effort=effort,
     )
 
 
 # ── Task Decomposition ────────────────────────────────────────────────────────
 
-def decompose_task(task: str, model: str = None) -> tuple[str, dict, list[str]]:
+def decompose_task(task: str, model: str = None, effort: str = None) -> tuple[str, dict, list[str]]:
     """
     Ask the LLM to break a complex task into ordered subtasks.
     Returns (full_response, usage, list_of_step_strings).
@@ -85,6 +88,7 @@ def decompose_task(task: str, model: str = None) -> tuple[str, dict, list[str]]:
     content, usage = _complete(
         model or MODEL, system,
         [{"role": "user", "content": f"Decompose this task into subtasks: {task}"}],
+        effort=effort,
     )
 
     steps: list[str] = []
@@ -98,7 +102,7 @@ def decompose_task(task: str, model: str = None) -> tuple[str, dict, list[str]]:
 
 # ── ReAct Loop ────────────────────────────────────────────────────────────────
 
-def react_loop(task: str, model: str = None) -> tuple[list[dict], dict]:
+def react_loop(task: str, model: str = None, effort: str = None) -> tuple[list[dict], dict]:
     """
     Simulate a ReAct (Reason + Act) loop.
     The LLM is prompted to produce interleaved Thought / Action / Observation steps,
@@ -115,7 +119,7 @@ def react_loop(task: str, model: str = None) -> tuple[list[dict], dict]:
         "  Final Answer: [your complete, well-reasoned answer]\n\n"
         "Be educational and concrete — this is a workshop demo showing how agents think."
     )
-    content, usage = _complete(model or MODEL, system, [{"role": "user", "content": task}])
+    content, usage = _complete(model or MODEL, system, [{"role": "user", "content": task}], effort=effort)
 
     PREFIXES = [
         ("Thought:",      "think"),

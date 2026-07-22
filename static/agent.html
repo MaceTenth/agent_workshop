@@ -18,6 +18,7 @@
       <p>Planning → Execution → Synthesis → Verification — all in one loop</p>
     </div>
     <span id="key-warning" style="display:none;font-size:12px;font-weight:700;color:#f87171;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.35);border-radius:8px;padding:5px 10px;white-space:nowrap;margin-left:auto">⚠️ No API key</span>
+    <a href="/tokenizer.html" class="back-link">🔡 Tokenizer →</a>
     <a href="/frameworks.html" class="back-link">🔗 Frameworks →</a>
   </header>
 
@@ -56,6 +57,18 @@
             <option value="gpt-4o">GPT-4o</option>
             <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
           </optgroup>
+        </select>
+      </div>
+
+      <div class="input-col" id="effort-label" title="Reasoning depth — Anthropic Sonnet 5 / Opus 4.8 only">
+        <span class="agent-input-label">Effort</span>
+        <select id="effort-select" class="risk-select">
+          <option value="">Default</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="xhigh">xHigh</option>
+          <option value="max">Max</option>
         </select>
       </div>
 

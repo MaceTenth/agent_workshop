@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from providers import (
     anthropic_client, openai_client, provider_for_model, require_key,
     to_openai_tools, openai_usage, openai_text, complete as provider_complete,
-    DEFAULT_MODEL,
+    effort_kwargs, DEFAULT_MODEL,
 )
 
 load_dotenv()
@@ -54,16 +54,16 @@ def _preview(trace, mode, model, messages, tools=None):
         }
 
 
-def _complete(mdl, system, messages, tools=None, use_context_mgmt=False, cm_beta=None, cm_edit=None):
+def _complete(mdl, system, messages, tools=None, use_context_mgmt=False, cm_beta=None, cm_edit=None, effort=None):
     """Thin wrapper around providers.complete() using this module's MAX_TOKENS."""
     text, usage, response, provider = provider_complete(
         mdl, system, messages, max_tokens=MAX_TOKENS, tools=tools,
-        use_context_mgmt=use_context_mgmt, cm_beta=cm_beta, cm_edit=cm_edit,
+        use_context_mgmt=use_context_mgmt, cm_beta=cm_beta, cm_edit=cm_edit, effort=effort,
     )
     return text, usage, response, provider
 
 
-def simple_llm_call(user_message: str, model: str = None, trace: dict = None) -> tuple[str, dict]:
+def simple_llm_call(user_message: str, model: str = None, trace: dict = None, effort: str = None) -> tuple[str, dict]:
     """
     A single, stateless LLM call.
     No conversation history is maintained — each call is fully independent.
@@ -72,11 +72,11 @@ def simple_llm_call(user_message: str, model: str = None, trace: dict = None) ->
     mdl = model or MODEL
     messages = [{"role": "user", "content": user_message}]
     _preview(trace, "Stateless", mdl, messages)
-    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, messages)
+    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, messages, effort=effort)
     return text, usage
 
 
-def llm_with_memory(messages: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict]:
+def llm_with_memory(messages: list[dict], model: str = None, trace: dict = None, effort: str = None) -> tuple[str, dict]:
     """
     Stateful LLM call.
     The full conversation history is passed on every request so the model
@@ -93,11 +93,12 @@ def llm_with_memory(messages: list[dict], model: str = None, trace: dict = None)
     text, usage, _, _ = _complete(
         mdl, SYSTEM_PROMPT, messages,
         use_context_mgmt=True, cm_beta="compact-2026-01-12", cm_edit={"type": "compact_20260112"},
+        effort=effort,
     )
     return text, usage
 
 
-def llm_with_tools(messages: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, list[dict]]:
+def llm_with_tools(messages: list[dict], model: str = None, trace: dict = None, effort: str = None) -> tuple[str, dict, list[dict]]:
     """
     Agentic loop with tool use.
     Calls the model, executes any tool calls, feeds results back, and
@@ -131,10 +132,12 @@ def llm_with_tools(messages: list[dict], model: str = None, trace: dict = None) 
                     messages=msgs,
                     tools=TOOLS,
                     context_management={"edits": [{"type": "clear_tool_uses_20250919"}]},
+                    **effort_kwargs(mdl, effort),
                 )
             else:
                 response = client.messages.create(
                     model=mdl, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=msgs, tools=TOOLS,
+                    **effort_kwargs(mdl, effort),
                 )
             for k, v in _usage(response).items():
                 total_usage[k] += v
@@ -176,7 +179,7 @@ def llm_with_tools(messages: list[dict], model: str = None, trace: dict = None) 
             oa_messages.append({"role": "tool", "tool_call_id": tc.id, "content": str(result)})
 
 
-def llm_with_rag(user_message: str, history: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, str]:
+def llm_with_rag(user_message: str, history: list[dict], model: str = None, trace: dict = None, effort: str = None) -> tuple[str, dict, str]:
     """
     Simple RAG pipeline (no embeddings):
       1. Retrieve relevant employee records via keyword matching.
@@ -195,11 +198,11 @@ def llm_with_rag(user_message: str, history: list[dict], model: str = None, trac
     )
     msgs = list(history) + [{"role": "user", "content": augmented}]
     _preview(trace, "RAG", mdl, msgs)
-    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, msgs)
+    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, msgs, effort=effort)
     return text, usage, context
 
 
-def llm_with_web_search(user_message: str, history: list[dict], model: str = None, trace: dict = None) -> tuple[str, dict, str]:
+def llm_with_web_search(user_message: str, history: list[dict], model: str = None, trace: dict = None, effort: str = None) -> tuple[str, dict, str]:
     """
     Two-step web-search pipeline:
       1. Call Claude's built-in web_search server tool to get a fresh,
@@ -226,13 +229,13 @@ def llm_with_web_search(user_message: str, history: list[dict], model: str = Non
     )
     msgs = list(history) + [{"role": "user", "content": synthesis_prompt}]
     _preview(trace, "Web Search", mdl, msgs, tools=["web_search (server-side, step 1)"])
-    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, msgs)
+    text, usage, _, _ = _complete(mdl, SYSTEM_PROMPT, msgs, effort=effort)
     return text, usage, search_context
 
 
 def llm_agent(message: str, history: list[dict], tools_enabled: bool = False,
               web_search_enabled: bool = False, rag_enabled: bool = False,
-              model: str = None, trace: dict = None) -> tuple[str, dict, list[dict], str]:
+              model: str = None, trace: dict = None, effort: str = None) -> tuple[str, dict, list[dict], str]:
     """
     Combined 'Agent mode': hand the model every enabled capability at once —
     tools (get_datetime / calculate), web_search, and RAG context — in a single
@@ -280,6 +283,7 @@ def llm_agent(message: str, history: list[dict], tools_enabled: bool = False,
             kwargs = dict(model=mdl, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT, messages=msgs)
             if tools:
                 kwargs["tools"] = tools
+            kwargs.update(effort_kwargs(mdl, effort))
             if use_cm:
                 response = client.beta.messages.create(
                     betas=["context-management-2025-06-27"],
