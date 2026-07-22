@@ -15,6 +15,7 @@ A hands-on FastAPI application that walks through the building blocks of AI agen
 | **Planning** | Zero-shot, few-shot, chain-of-thought, decomposition, ReAct |
 | **Agent in Action** | Multi-step stock analysis agent (Plan → Execute → Synthesise → Verify), with live progress and risk-tolerance tuning |
 | **Frameworks** | Overview + interactive decision guide comparing agent frameworks (LangGraph, Pydantic AI, LlamaIndex, and more) |
+| **Tokenizer** | Interactive tokenizer playground — see how prose, code, JSON, multilingual (including RTL/Hebrew) and emoji text gets split into tokens across GPT, open models (DeepSeek, Qwen, Llama, Mistral, GLM) and Claude |
 
 ### Workshop UX
 
