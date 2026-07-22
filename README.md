@@ -30,6 +30,18 @@ A hands-on FastAPI application that walks through the building blocks of AI agen
 
 ## Screenshots
 
+**Workshop home — Stateless LLM step:**
+
+![Workshop home page showing the Stateless LLM step, capability sidebar, and model/effort pickers](screenshots/workshop-home-stateless.png)
+
+**"What is an Agent?" — deterministic vs. non-deterministic execution:**
+
+![Interactive comparison of traditional code with a known outcome versus an AI agent with an LLM-driven, unknown outcome](screenshots/what-is-an-agent.png)
+
+**Planning — Task Decomposition:**
+
+![Planning & Prompt Engineering page showing the Task Decomposition tab breaking a complex task into ordered subtasks](screenshots/planning-task-decomposition.png)
+
 **Tokenizer playground — right-to-left (Hebrew) prompt:**
 
 ![Tokenizer playground with a Hebrew RTL prompt broken into tokens](screenshots/tokenizer-hebrew-rtl.png)
